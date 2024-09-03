@@ -10,7 +10,7 @@ DB_PATH = os.path.join(SCRIPT_DIR, DB_FILENAME)
 SCHEMA_PATH = os.path.join(SCRIPT_DIR, SCHEMA_FILENAME)
 
 
-class Database:
+class DatabaseHandler:
     def __init__(self, db_file=DB_PATH, schema_file=SCHEMA_PATH):
         """
         Initializes the database connection and schema file.
@@ -28,8 +28,9 @@ class Database:
         Connects to the database and creates a cursor.
         """
         try:
-            self.conn = sqlite3.connect(self.db_file)
-            self.cursor = self.conn.cursor()
+            if self.conn is None:
+                self.conn = sqlite3.connect(self.db_file)
+                self.cursor = self.conn.cursor()
         except sqlite3.Error as e:
             print(f"Error connecting to database: {e}")
             raise
@@ -85,8 +86,6 @@ class Database:
             print(f"Error inserting data into table {table_name}: {e}")
             self.conn.rollback()  # Rollback in case of error
 
-    insesert_data = insert_data
-
     def query_data(self, query, params=()):
         """
         Executes an SQL query and returns the results.
@@ -102,11 +101,36 @@ class Database:
             print(f"Error querying data: {e}")
             return []
 
+    @staticmethod
+    def get_connection():
+        """
+        Provides a context-managed way to get a database connection.
+
+        :return: A DatabaseHandler instance with an active connection.
+        """
+        db_handler = DatabaseHandler()
+        db_handler.connect()
+        return db_handler
+
+    def __enter__(self):
+        """
+        Enables context management (with statement) for the DatabaseHandler.
+        """
+        if self.conn is None:
+            self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """
+        Closes the database connection when exiting the context.
+        """
+        self.close()
+
 # Example usage
 if __name__ == "__main__":
     import datetime
     now = datetime.datetime.now(datetime.timezone.utc)
-    db = Database()
+    db = DatabaseHandler()
 
     try:
         db.connect()
