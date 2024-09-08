@@ -40,6 +40,7 @@ historical_data = {
 
 
 
+
 class SwitchBot:
     def __init__(self, token, broker, port, topic):
         # Local token
@@ -107,7 +108,30 @@ class SwitchBot:
         #chat_ID is the ID of user who sends messages to bot
         #query_data is the command that is sent from keyboard or microservice to the bot
         query_ID , chat_ID , query_data = telepot.glance(msg,flavor='callback_query')
-        if "blood_pressure:" in query_data:
+        
+        if "historical_data:blood_pressure:" in query_data:
+            input_patient_ID = query_data.replace("historical_data:blood_pressure:", "", 1)
+            historical_data_message_blood_pressure = ""
+            for item in historical_data[input_patient_ID]:
+                historical_data_message_blood_pressure =  historical_data_message_blood_pressure + f'day: {item["day"]} - blood_pressure: {item["blood_pressure"]}\n' 
+            self.bot.sendMessage(chat_ID, text=historical_data_message_blood_pressure) 
+        
+        elif "current_data:blood_pressure:" in query_data:
+            input_patient_ID = query_data.replace("current_data:blood_pressure:", "", 1)
+            self.bot.sendMessage(chat_ID, text=f'blood pressure of patient with ID {input_patient_ID} is: {patients_ID[input_patient_ID][0]}') 
+        
+        elif "historical_data:temperature:" in query_data:
+            input_patient_ID = query_data.replace("historical_data:temperature:", "", 1)
+            historical_data_message_temperature = ""
+            for item in historical_data[input_patient_ID]:
+                historical_data_message_temperature =  historical_data_message_temperature + f'day: {item["day"]} - temperature: {item["temperature"]}\n' 
+            self.bot.sendMessage(chat_ID, text=historical_data_message_temperature) 
+        
+        elif "current_data:temperature:" in query_data:
+            input_patient_ID = query_data.replace("current_data:temperature:", "", 1)
+            self.bot.sendMessage(chat_ID, text=f'temprature of patient with ID {input_patient_ID} is: {patients_ID[input_patient_ID][1]}') 
+        
+        elif "blood_pressure:" in query_data:
             input_patient_ID = query_data.replace("blood_pressure:", "", 1)
             ####this should be connected to Victor Code (patient history API) to call blood pressure
             buttons = [[InlineKeyboardButton(text=f'current data', callback_data=f'current_data:blood_pressure:{input_patient_ID}'), 
@@ -122,6 +146,8 @@ class SwitchBot:
                 InlineKeyboardButton(text=f'historical data', callback_data=f'historical_data:temperature:{input_patient_ID}')]]
             keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
             self.bot.sendMessage(chat_ID, text='Do you want to monitor current data or historical data', reply_markup=keyboard) 
+        
+        
 
 
 
@@ -133,8 +159,8 @@ class SwitchBot:
         payload = self.__message.copy()
         payload['e'][0]['v'] = query_data
         payload['e'][0]['t'] = time.time()
-        self.client.myPublish(self.topic, payload)
-        self.bot.sendMessage(chat_ID, text=f"Led switched {query_data}")
+        #self.client.myPublish(self.topic, payload)
+        #self.bot.sendMessage(chat_ID, text=f"Led switched {query_data}")
 
     ### To do
     
@@ -167,6 +193,6 @@ if __name__ == "__main__":
 
     
     while True:
-        time.sleep(4)
+        time.sleep(3)
         #time sleep
         
