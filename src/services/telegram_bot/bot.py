@@ -5,14 +5,17 @@ import json
 import requests
 import time
 from MyMQTT import *
+import paho.mqtt.client as PahoMQTT
+
 
 user_credentials = {
-    "user1": "P@ssw0rd123",
-    "user2": "Qw3rtY!89",
-    "user3": "Secur3@987",
-    "user4": "Adm1n#456",
-    "user5": "PassW0rd!76"
+    "user1": {"password": "P@ssw0rd123", "chat_ID": ""},
+    "user2": {"password": "Qw3rtY!89", "chat_ID": ""},
+    "user3": {"password": "Secur3@987", "chat_ID": ""},
+    "user4": {"password": "Adm1n#456", "chat_ID": ""},
+    "user5": {"password": "PassW0rd!76", "chat_ID": ""}
 }
+
 
 patients_ID = {
     "12345": [70,38.5],
@@ -39,9 +42,11 @@ historical_data = {
 
 
 
+            
+            
 
 
-class SwitchBot:
+class HealthmonitorBot:
     def __init__(self, token, broker, port, topic):
         # Local token
         self.tokenBot = token
@@ -61,18 +66,15 @@ class SwitchBot:
     def on_chat_message(self, msg):
         content_type, chat_type, chat_ID = telepot.glance(msg)
         message = msg['text']
-        if message == "/switch":
-            buttons = [[InlineKeyboardButton(text=f'ON 🟡', callback_data=f'on'), 
-                    InlineKeyboardButton(text=f'OFF ⚪', callback_data=f'off')]]
-            keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
-            self.bot.sendMessage(chat_ID, text='What do you want to do', reply_markup=keyboard)
-        elif message == "/start":
+        
+        if message == "/start":
             self.bot.sendMessage(chat_ID, text='Welcome to healthcare monitor')
             self.bot.sendMessage(chat_ID, text='please enter your username and password: for example \nuser:sample \npassword:sample')
         elif "user:" in message and "password:" in message:
             # Splitting the string by new lines
             lines = message.splitlines()
             if len(lines) == 2:
+
                 input_user = lines[0].replace("user:", "", 1)
                 input_password = lines[1].replace("password:", "", 1)
                 
@@ -80,7 +82,8 @@ class SwitchBot:
                 self.bot.sendMessage(chat_ID, text='the format is wrong')
 
             if input_user in user_credentials:
-                if user_credentials[input_user] == input_password:
+                if user_credentials[input_user]["password"] == input_password:
+                    user_credentials[input_user]["chat_ID"] = chat_ID
                     self.bot.sendMessage(chat_ID, text=f"Hi {input_user}, you can monitor your patients health.")  
                     self.bot.sendMessage(chat_ID, text='please enter your patient ID, for example: \n/patient:ID')
                 else:
@@ -174,7 +177,39 @@ class SwitchBot:
         else:
             self.bot.sendMessage(chat_ID,text=f"user does not exist")
 
+class MySubscriber:
+    def __init__(self, clientID,topic,broker):
+        self.clientID = clientID
+        # create an instance of paho.mqtt.client
+        self._paho_mqtt = PahoMQTT.Client(clientID, True) 
         
+        # register the callback
+        self._paho_mqtt.on_connect = self.myOnConnect
+        self._paho_mqtt.on_message = self.myOnMessageReceived
+        
+        self.topic = topic
+        self.messageBroker =broker 
+        
+    def start (self):
+        #manage connection to broker
+        self._paho_mqtt.connect(self.messageBroker, 1883)
+        self._paho_mqtt.loop_start()
+        # subscribe for a topic
+        self._paho_mqtt.subscribe(self.topic, 2)
+        
+    def stop (self):
+        self._paho_mqtt.unsubscribe(self.topic)
+        self._paho_mqtt.loop_stop()
+        self._paho_mqtt.disconnect()
+        
+    def myOnConnect (self, paho_mqtt, userdata, flags, rc):
+        print ("Connected to %s with result code: %d" % (self.messageBroker, rc))
+        
+    def myOnMessageReceived (self, paho_mqtt , userdata, msg):
+        # A new message is received
+        message = "Topic:'" + msg.topic+"', QoS: '"+str(msg.qos)+"' Message: '"+str(msg.payload) + "'"
+        for user in user_credentials:
+            sb.bot.sendMessage(user["chat_ID"], text= message)       
 
 
 if __name__ == "__main__":
@@ -189,7 +224,10 @@ if __name__ == "__main__":
     port = conf["brokerPort"]
     topic = conf["mqttTopic"]
     #ssb = SimpleSwitchBot(token, broker, port, topic)
-    sb=SwitchBot(token,broker,port,topic)
+    sb = HealthmonitorBot(token,broker,port,topic)
+    #subscriber = MySubscriber ("telegram bot","alert/bloodpressure", "local host")
+    #subscriber.start()
+    
 
     
     while True:
