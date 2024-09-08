@@ -20,6 +20,24 @@ patients_ID = {
     
 }
 
+historical_data = {
+    "12345": [
+        {"day": 1, "blood_pressure": 120, "temperature": 37.1},
+        {"day": 2, "blood_pressure": 125, "temperature": 37.3},
+        {"day": 3, "blood_pressure": 118, "temperature": 37.0},
+        {"day": 4, "blood_pressure": 122, "temperature": 37.2},
+        {"day": 5, "blood_pressure": 121, "temperature": 37.4}
+    ],
+    "6789": [
+        {"day": 1, "blood_pressure": 130, "temperature": 38.0},
+        {"day": 2, "blood_pressure": 128, "temperature": 37.9},
+        {"day": 3, "blood_pressure": 132, "temperature": 38.1},
+        {"day": 4, "blood_pressure": 129, "temperature": 38.0},
+        {"day": 5, "blood_pressure": 131, "temperature": 38.2}
+    ]
+}
+
+
 
 
 class SwitchBot:
@@ -90,6 +108,24 @@ class SwitchBot:
         #query_data is the command that is sent from keyboard or microservice to the bot
         query_ID , chat_ID , query_data = telepot.glance(msg,flavor='callback_query')
         if "blood_pressure:" in query_data:
+            input_patient_ID = query_data.replace("blood_pressure:", "", 1)
+            ####this should be connected to Victor Code (patient history API) to call blood pressure
+            buttons = [[InlineKeyboardButton(text=f'current data', callback_data=f'current_data:blood_pressure:{input_patient_ID}'), 
+                InlineKeyboardButton(text=f'historical data', callback_data=f'historical_data:blood_pressure:{input_patient_ID}')]]
+            keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+            self.bot.sendMessage(chat_ID, text='Do you want to monitor current data or historical data', reply_markup=keyboard) 
+
+        elif "temperature:" in query_data:
+            input_patient_ID = query_data.replace("temperature:", "", 1)
+            ####this should be connected to Victor Code (patient history API) to call blood pressure
+            buttons = [[InlineKeyboardButton(text=f'current data', callback_data=f'current_data:temperature:{input_patient_ID}'), 
+                InlineKeyboardButton(text=f'historical data', callback_data=f'historical_data:temperature:{input_patient_ID}')]]
+            keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+            self.bot.sendMessage(chat_ID, text='Do you want to monitor current data or historical data', reply_markup=keyboard) 
+
+
+
+
             
 
 
@@ -116,7 +152,7 @@ class SwitchBot:
 
 
 if __name__ == "__main__":
-    conf = json.load(open("settings.json"))
+    conf = json.load(open("G:/IOT_september_2024/git_project_healthy_main/project_healthy/src/services/telegram_bot/settings.json"))
     token = conf["telegramToken"]
 
     # Echo bot
@@ -129,5 +165,8 @@ if __name__ == "__main__":
     #ssb = SimpleSwitchBot(token, broker, port, topic)
     sb=SwitchBot(token,broker,port,topic)
 
+    
     while True:
-        time.sleep(3)
+        time.sleep(4)
+        #time sleep
+        
