@@ -1,10 +1,13 @@
 import cherrypy
 import requests
-from database.sqliteHandler import DatabaseHandler
+from database.sqlite_handler import DatabaseHandler
+from mqtt.mqtt_handler import MqttHandler
 
 # Definições para ThinkSpeak
 THINGSPEAK_API_READ_URL = "https://api.thingspeak.com/channels/{channel_id}/feeds.json"
 THINGSPEAK_API_KEY = "YOUR_THINGSPEAK_API_KEY"
+THINGSPEAK_MQTT_URL = 'mqtt3.thingspeak.com'
+THINGSPEAK_MQTT_PORT = 1883
 
 
 class ThingSpeakAdapter:
@@ -12,6 +15,13 @@ class ThingSpeakAdapter:
         # Initialize the DatabaseHandler
         self._db = DatabaseHandler()
         self._db.connect()
+
+        self._mqtt = MqttHandler(
+            client_id='thingspeak-adapter',
+            broker=THINGSPEAK_MQTT_URL,
+            port=THINGSPEAK_MQTT_PORT
+        )
+        self._mqtt.connect()
 
     @cherrypy.expose
     def index(self):
@@ -100,7 +110,6 @@ class ThingSpeakAdapter:
             return result[0]
         return None, None
 
-
     def get_thingspeak_channel_id(self, user, device_mac):
         """
         Retrieve the ThinkSpeak channel key for a specific device.
@@ -121,6 +130,18 @@ class ThingSpeakAdapter:
                 return result[0][0]
             return None
 
+    def send_data_to_thingspeak_mqtt(self, channel_key, field_id, message):
+        """
+        Send data to ThingSpeak using the MQTT protocol.
+
+        :param str channel_key: The API key for the ThingSpeak channel.
+        :param int field_id: The field ID in the ThingSpeak channel where data should be sent.
+        :param str message: The data message to be sent to ThingSpeak.
+        :return: None
+        """
+        mqtt_topic = f"channels/{channel_key}/publish/fields/field{field_id}"
+        self._mqtt.publish(mqtt_topic, payload=str(message), qos=0)
+        print(f"Data sent to ThingSpeak MQTT broker: Topic: {mqtt_topic}, Payload: {message}")
 
 if __name__ == "__main__":
     cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8080})
