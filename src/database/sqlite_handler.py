@@ -143,15 +143,20 @@ if __name__ == "__main__":
         #                 location='Bedroom', status='Active', user_id=2)
         # Actuator
         # db.insert_data('Actuators', actuator_type='Lamp', device_id=3, status='Active')
+        #
+        # Sensor
+        # db.insert_data('Sensors', sensor_type='Temperature', device_id=1, last_reading='22.5', last_reading_timestamp=now)
+        # db.insert_data('Sensors', sensor_type='Humidity', device_id=1, last_reading='45', last_reading_timestamp=now)
+        # db.insert_data('Sensors', sensor_type='Blood Pressure', device_id=2, last_reading='120/80', last_reading_timestamp=now)
         # Services
         # db.insesert_data('Services', name='body_temp_check', alias='Body Temperature Check', service_description='Monitors body temperatures', status='Active',
         #                 last_run_timestamp=now, protocol='MQTT')
         # Endpoint
         # db.insesert_data('Endpoints', service_id=1, entity_type='sensor', entity_id=1, endpoint='/1/body_temp_check/001B44113A/sensor/1')
 
-        results = db.query_data('SELECT * FROM Users')
-        for row in results:
-            print(row)
+        # results = db.query_data('SELECT * FROM Users')
+        # for row in results:
+        #     print(row)
     except Exception as e:
         print(f"An error occurred: {e}")
     finally:
