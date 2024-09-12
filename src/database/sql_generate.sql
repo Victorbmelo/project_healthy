@@ -64,6 +64,16 @@ CREATE TABLE IF NOT EXISTS Configurations (
   FOREIGN KEY (device_id) REFERENCES Devices(device_id)
 );
 
+CREATE TABLE IF NOT EXISTS TelegramBot (
+  bot_id INTEGER PRIMARY KEY,
+  bot_token TEXT NOT NULL,
+  chat_id TEXT NOT NULL,
+  user_id INTEGER NOT NULL,
+  last_message TEXT,
+  last_message_timestamp DATETIME,
+  FOREIGN KEY (user_id) REFERENCES Users(user_id)
+);
+
 -- Index
 CREATE INDEX IF NOT EXISTS idx_devices_mac_address ON Devices (mac_address);
 CREATE INDEX IF NOT EXISTS idx_devices_user_id ON Devices (user_id);
@@ -73,5 +83,6 @@ CREATE INDEX IF NOT EXISTS idx_endpoints_service_id ON Endpoints (service_id);
 CREATE INDEX IF NOT EXISTS idx_endpoints_entity_type ON Endpoints (entity_type);
 CREATE INDEX IF NOT EXISTS idx_endpoints_entity_id ON Endpoints (entity_id);
 CREATE INDEX IF NOT EXISTS idx_configurations_device_id ON Configurations (device_id);
+CREATE INDEX IF NOT EXISTS idx_telegrambot_user_id ON TelegramBot (user_id);
 
 PRAGMA foreign_keys = ON;

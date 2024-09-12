@@ -25,7 +25,9 @@ class MqttHandler:
         self._username = username
         self._password = password
         self._tls = tls
-        self._client = mqtt.Client(client_id=self.client_id)
+        self._client = mqtt.Client(client_id=self._client_id)
+        self._client.enable_logger()
+
 
         # Configure authentication if provided
         if username and password:
@@ -41,6 +43,9 @@ class MqttHandler:
         self._client.on_message = self.on_message
         self._client.on_subscribe = self.on_subscribe
         self._client.on_publish = self.on_publish
+
+    def set_on_message_callback(self, function):
+        self._client.on_message = function
 
     def connect(self):
         """
