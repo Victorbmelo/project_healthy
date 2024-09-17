@@ -4,11 +4,40 @@ import sqlite3
 
 class LampAction:
     exposed = True
+    def GET(self):
+        # Database connection
+        conn = sqlite3.connect('D:/Documents/node/sqlite-tools-win-x64-3460100/lamp_schedule.db')  # Replace with your actual database path
+        cursor = conn.cursor()
+        
+        # Query to retrieve all data from the 'schedules' table
+        cursor.execute("SELECT id, time, weekday, state FROM schedules")
+        rows = cursor.fetchall()
+        
+        # Prepare the data as a list of dictionaries
+        data = []
+        for row in rows:
+            data.append({
+                "id": row[0],
+                "time": row[1],
+                "weekdays": row[2],
+                "state": row[3]  # Convert state to boolean if stored as integer
+            })
+        
+        # Close the database connection
+        conn.close()
+        
+       
+        return json.dumps(data)
+
+    
 
     def PUT(self, *uri, **params):
         # Database connection
         conn = sqlite3.connect('D:/Documents/node/sqlite-tools-win-x64-3460100/lamp_schedule.db')  # Replace with your actual database path
         reqString = cherrypy.request.body.read().decode()  # Read request body and decode from binary to string
+        
+        print("ReqString")
+        print(reqString)
         reqDict = json.loads(reqString)  # Convert JSON string to dictionary
         print(reqDict)  # Print the received data for debugging
 
@@ -17,6 +46,7 @@ class LampAction:
         # Extract values from request
         time = reqDict['time']
         weekdays = ','.join(reqDict.get('weekdays', []))  # Default to empty list if 'weekdays' is not provided
+        #weekdays =reqDict['weekdays']
         state = reqDict['state']
 
         # Check if record already exists
