@@ -60,6 +60,7 @@ class LampAction:
             # Record exists, return a message
             cherrypy.response.status = 409  # Conflict status code
             #return json.dumps({"status": "exists", "message": "Record already exists"})
+            conn.close()
             return "Record already exists"
         else:
             # Insert the record
@@ -72,8 +73,43 @@ class LampAction:
             # Return a success response
             cherrypy.response.status = 200
             #return json.dumps({"status": "success", "message": "Data inserted successfully"})
+            conn.close()
             return  "Data inserted successfully"
+    
+    def DELETE(self, *uri, **params):
+        
+        # Database connection
+        conn = sqlite3.connect('D:/Documents/node/sqlite-tools-win-x64-3460100/lamp_schedule.db')
+        cursor = conn.cursor()
+    
+        # Corrected: Read request body properly without passing extra arguments
+        reqString = cherrypy.request.body #.read()  # Decode from binary to string
+        print("ReqString ")
+        print(reqString)
+        # Parse JSON
+        reqDict = json.loads(reqString)
+        record_id = reqDict.get('id')  # Extract 'id' from JSON
+        print("ReqDict")
+        print(reqDict)
+        if record_id is None:
+            raise ValueError("Missing 'id' in request payload")
+
+        # SQL query to delete record by id
+        delete_query = "DELETE FROM schedules WHERE id = ?"
+        cursor.execute(delete_query, (record_id,))
+        conn.commit()
+
+        # Check if a row was actually deleted
+        if cursor.rowcount == 0:
+            cherrypy.response.status = 404  # Not found
+            return "Record not found".encode('utf-8')  # Return response as bytes
+
+        # Close the database connection
         conn.close()
+
+        # Return success message
+        cherrypy.response.status = 200
+        return "Record deleted successfully".encode('utf-8')  # Return response as bytes
 
 if __name__ == "__main__":
     conf = {
