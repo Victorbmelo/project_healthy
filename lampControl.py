@@ -74,42 +74,55 @@ class LampAction:
             cherrypy.response.status = 200
             #return json.dumps({"status": "success", "message": "Data inserted successfully"})
             conn.close()
+    
             return  "Data inserted successfully"
     
     def DELETE(self, *uri, **params):
-        
+        # Extract the 'id' from query parameters
+        record_id = params.get('id')
+
+        if not record_id:
+            cherrypy.response.status = 400  # Bad Request
+            return json.dumps({"status": "error", "message": "ID is required for DELETE"})
+
+        try:
+            record_id = int(record_id)
+        except ValueError:
+            cherrypy.response.status = 400
+            return json.dumps({"status": "error", "message": "Invalid ID format"})
+
         # Database connection
         conn = sqlite3.connect('D:/Documents/node/sqlite-tools-win-x64-3460100/lamp_schedule.db')
         cursor = conn.cursor()
-    
-        # Corrected: Read request body properly without passing extra arguments
-        reqString = cherrypy.request.body #.read()  # Decode from binary to string
-        print("ReqString ")
-        print(reqString)
-        # Parse JSON
-        reqDict = json.loads(reqString)
-        record_id = reqDict.get('id')  # Extract 'id' from JSON
-        print("ReqDict")
-        print(reqDict)
-        if record_id is None:
-            raise ValueError("Missing 'id' in request payload")
 
-        # SQL query to delete record by id
+        # Check if the record exists
+        check_query = "SELECT COUNT(*) FROM schedules WHERE id = ?"
+        cursor.execute(check_query, (record_id,))
+        exists = cursor.fetchone()[0] > 0
+
+        if not exists:
+            conn.close()
+            cherrypy.response.status = 404  # Not Found
+            return json.dumps({"status": "error", "message": f"Record with id {record_id} not found"})
+
+        # Perform the delete operation
         delete_query = "DELETE FROM schedules WHERE id = ?"
         cursor.execute(delete_query, (record_id,))
         conn.commit()
 
-        # Check if a row was actually deleted
-        if cursor.rowcount == 0:
-            cherrypy.response.status = 404  # Not found
-            return "Record not found".encode('utf-8')  # Return response as bytes
-
         # Close the database connection
         conn.close()
 
-        # Return success message
+        # Return a success response
         cherrypy.response.status = 200
-        return "Record deleted successfully".encode('utf-8')  # Return response as bytes
+        return json.dumps({"status": "success", "message": f"Record with id {record_id} successfully deleted"})
+    
+    
+        
+
+    
+        
+    
 
 if __name__ == "__main__":
     conf = {
