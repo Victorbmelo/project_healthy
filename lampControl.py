@@ -4,36 +4,54 @@ import sqlite3
 
 class LampAction:
     exposed = True
-    def GET(self):
+    def GET(self, *uri, **params):
         # Database connection
-        conn = sqlite3.connect('D:/Documents/node/sqlite-tools-win-x64-3460100/lamp_schedule.db')  # Replace with your actual database path
+        conn = sqlite3.connect('lamp_schedule.db')  # Replace with your actual database path
         cursor = conn.cursor()
+
+        if uri and uri[0] == 'lamps':
+            # Query to retrieve distinct id_Lamp values for dropdown
+            cursor.execute("SELECT DISTINCT id_Lamp FROM schedule")
+            lamps = cursor.fetchall()
         
-        # Query to retrieve all data from the 'schedules' table
-        cursor.execute("SELECT id, time, weekday, state FROM schedules")
-        rows = cursor.fetchall()
+            # Prepare the data in the format required by the dropdown
+            options = []
+            for row in lamps:
+                # Format each lamp as { "Lamp X": X }
+                id_lamp = row[0]
+                options.append({ f"Lamp {id_lamp}": id_lamp })
+            # Close the database connection
+            conn.close()
+        
+            return json.dumps(options)
+    
+        else:
+            # Query to retrieve all data from the 'schedule' table
+            cursor.execute("SELECT id, id_Lamp, time, weekdays, action FROM schedule")
+            rows = cursor.fetchall()
         
         # Prepare the data as a list of dictionaries
         data = []
         for row in rows:
+            print("row ")
+            print(row)
             data.append({
                 "id": row[0],
-                "time": row[1],
-                "weekdays": row[2],
-                "state": row[3]  # Convert state to boolean if stored as integer
+                "id_Lamp": row[1],
+                "time": row[2],
+                "weekdays": row[3],
+                "action": row[4]  # Convert state to boolean if stored as integer
             })
-        
-        # Close the database connection
+            
+            # Close the database connection
         conn.close()
-        
-       
+            
         return json.dumps(data)
-
     
 
     def PUT(self, *uri, **params):
         # Database connection
-        conn = sqlite3.connect('D:/Documents/node/sqlite-tools-win-x64-3460100/lamp_schedule.db')  # Replace with your actual database path
+        conn = sqlite3.connect('lamp_schedule.db')  # Replace with your actual database path
         reqString = cherrypy.request.body.read().decode()  # Read request body and decode from binary to string
         
         print("ReqString")
@@ -46,14 +64,15 @@ class LampAction:
         # Extract values from request
         time = reqDict['time']
         weekdays = ','.join(reqDict.get('weekdays', []))  # Default to empty list if 'weekdays' is not provided
+        id_Lamp= reqDict['id_Lamp']
         #weekdays =reqDict['weekdays']
-        state = reqDict['state']
+        #action = reqDict['action']
 
         # Check if record already exists
         print("weekdays")
         print(weekdays)
-        check_query = """SELECT COUNT(*) FROM schedules WHERE time = ? AND weekday = ?"""
-        cursor.execute(check_query, (time,weekdays))
+        check_query = """SELECT COUNT(*) FROM schedule WHERE time = ? AND weekdays = ? AND id_Lamp = ? """
+        cursor.execute(check_query, (time,weekdays, id_Lamp))
         record_exists = cursor.fetchone()[0] > 0
         
         if record_exists:
@@ -65,8 +84,8 @@ class LampAction:
         else:
             # Insert the record
             print("There is not this record ")
-            insert_query = """INSERT INTO schedules(time, weekday, state) VALUES (?, ?, ?)"""
-            cursor.execute(insert_query, (reqDict['time'], ','.join(reqDict['weekdays']), reqDict['state']))
+            insert_query = """INSERT INTO schedule(id_Lamp,time, weekdays, action) VALUES (?,?, ?, ?)"""
+            cursor.execute(insert_query, (reqDict['id_Lamp'],reqDict['time'], ','.join(reqDict['weekdays']), reqDict['action']))
 
             conn.commit()
             
@@ -92,11 +111,11 @@ class LampAction:
             return json.dumps({"status": "error", "message": "Invalid ID format"})
 
         # Database connection
-        conn = sqlite3.connect('D:/Documents/node/sqlite-tools-win-x64-3460100/lamp_schedule.db')
+        conn = sqlite3.connect('lamp_schedule.db')
         cursor = conn.cursor()
 
         # Check if the record exists
-        check_query = "SELECT COUNT(*) FROM schedules WHERE id = ?"
+        check_query = "SELECT COUNT(*) FROM schedule WHERE id = ?"
         cursor.execute(check_query, (record_id,))
         exists = cursor.fetchone()[0] > 0
 
@@ -106,7 +125,7 @@ class LampAction:
             return json.dumps({"status": "error", "message": f"Record with id {record_id} not found"})
 
         # Perform the delete operation
-        delete_query = "DELETE FROM schedules WHERE id = ?"
+        delete_query = "DELETE FROM schedule WHERE id = ?"
         cursor.execute(delete_query, (record_id,))
         conn.commit()
 
