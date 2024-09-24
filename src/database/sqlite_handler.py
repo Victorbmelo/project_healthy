@@ -101,6 +101,20 @@ class DatabaseHandler:
             print(f"Error querying data: {e}")
             return []
 
+    def execute_query(self, query, params=()):
+        """
+        Executes an SQL query that modifies data (e.g., INSERT, UPDATE, DELETE).
+
+        :param query: SQL query to be executed.
+        :param params: Parameters for the SQL query.
+        """
+        try:
+            self.cursor.execute(query, params)
+            self.conn.commit()
+        except sqlite3.Error as e:
+            print(f"Error executing query: {e}")
+            self.conn.rollback()
+
     @staticmethod
     def get_connection():
         """
