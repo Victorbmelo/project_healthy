@@ -1,41 +1,42 @@
-import random
-import time
-import requests
-import paho.mqtt.client as mqtt
+import json
+from src.mqtt.mqtt_handler import MqttHandler
 
+class AirConditioningService:
+    MQTT_TOPIC = '/+/airconditioning/+/+/+'
 
-MQTT_BROKER = "localhost"
-MQTT_TOPIC = "environment/temperature"
-MQTT_COMMAND_TOPIC = "ac/control"
+    def __init__(self):
+        pass
 
-THINGSPEAK_API_KEY = "1EQ3TK07SJHN8FSQ"
-THINGSPEAK_URL = "https://api.thingspeak.com/update"
+    def on_message(self, client, userdata, msg):
+        rcvd_topic = msg.topic
+        send_topic = f"{rcvd_topic}/alert"
+        payload = json.loads(msg.payload.decode())
+        print(f"Received: {payload} on {rcvd_topic}")
+        data = {'data': payload, 'alert_message': ""}
 
-def on_connect(client, userdata, flags, rc):
-    print("Connected to MQTT broker")
-    client.subscribe(MQTT_TOPIC)
+        if 'temperature' in payload:
+            temperature = payload['temperature']
+            if temperature > 25:
+                alert_str = "Temperature too high, adjusting air conditioning..."
+                data["alert_message"] = alert_str
+                print(alert_str)
+                client.publish(send_topic, json.dumps(data))
+            elif temperature < 18:
+                alert_str = "Temperature too low, adjusting air conditioning..."
+                data["alert_message"] = alert_str
+                print(alert_str)
+                client.publish(send_topic, json.dumps(data))
+            else:
+                print("Temperature is optimal, keeping current settings.")
 
-def on_message(client, userdata, msg):
-    temperature, humidity = map(float, msg.payload.decode().split(','))
-    print(f"Received temperature: {temperature} °C, humidity: {humidity} %")
-
-    # Envia a temperatura e umidade para o ThingSpeak
-    data = {'api_key': THINGSPEAK_API_KEY, 'field1': temperature, 'field2': humidity}
-    requests.get(THINGSPEAK_URL, params=data)
-
-    # Ajusta o ar condicionado baseado na temperatura e umidade
-    if temperature > 25:
-        print("Temperature too high, adjusting air conditioning...")
-        client.publish(MQTT_COMMAND_TOPIC, "set_cool")
-    elif temperature < 18:
-        print("Temperature too low, adjusting air conditioning...")
-        client.publish(MQTT_COMMAND_TOPIC, "set_heat")
-    else:
-        print("Temperature is optimal, keeping current settings.")
-
-client = mqtt.Client()
-client.on_connect = on_connect
-client.on_message = on_message
-
-client.connect(MQTT_BROKER, 1883, 60)
-client.loop_forever()
+    def start(self):
+        mqtt = MqttHandler(client_id='air-conditioning-service')
+        mqtt._client.on_message = self.on_message
+        mqtt.connect()
+        mqtt.subscribe(self.MQTT_TOPIC)
+        print(f"Air Conditioning Service started and subscribed to {self.MQTT_TOPIC}")
+        try:
+            pass
+        except KeyboardInterrupt:
+            mqtt.close()
+            print("Air Conditioning Service stopped.")
