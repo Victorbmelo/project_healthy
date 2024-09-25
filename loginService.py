@@ -5,6 +5,7 @@ import sqlite3
 class LoginAPI:
     exposed = True
 
+    #post Request
     def POST(self, *uri, **params):
         # Parse the request body (JSON format)
         raw_body = cherrypy.request.body.read(int(cherrypy.request.headers['Content-Length']))
