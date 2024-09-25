@@ -1,80 +1,100 @@
-import cherrypy
-import json
+import random
 import time
-import datetime
-import pytz
-import RPi.GPIO as GPIO
-import subprocess
+import threading
 
-from dht11 import DHT11
-from src.api.stepCountHandler import StepCount
-from src.database.sqliteHandler import Database
+from src.mqtt.mqtt_handler import MqttHandler
+from src.database.sqlite_handler import DatabaseHandler
 
-# db = Database()
+from src.services.air_conditioning.air_conditioning_service import AirConditioningService
+from src.services.blood_pressure.blood_pressure_service import BloodPressureService
+from src.services.body_temperature.body_temperature_service import BodyTemperatureService
+from src.services.thingspeak.thingspeak_adapter import ThingSpeakAdapter
 
-# Set up GPIO pins for sensors
-DHT_PIN = 4
-DYP_PIN = 18
+from src.device_connectors._device_factory import Device, Entity
+from src.device_connectors.temperature_humidity_sensor import TemperatureHumiditySensor
+from src.device_connectors.body_temp_sensor import BodyTemperatureSensor
+from src.device_connectors.blood_pressure_sensor import BloodPressureSensor
+from src.device_connectors.button_actuator import ActionButton
 
-# Set interval for readings
-READING_INTERVAL = 30 #* 60  # 30 minutes in seconds
 
-# Initialize the DHT11 sensor object
-dht11 = DHT11(DHT_PIN)
+class ServiceManager:
+    def __init__(self):
+        self.mqtt_handler = MqttHandler('service-manager')
+        self.thingspeak_adapter = ThingSpeakAdapter()
 
-# Read DHT11 sensor for temperature and humidity
-def read_dht11():
-    temperature = None
-    humidity = None
-    result = dht11.read()
-    if result.is_valid():
-        temperature = result.temperature
-        humidity = result.humidity
-    return humidity, temperature
+    def start_service(self, service_name):
+        if service_name == 'air_conditioning':
+            service = AirConditioningService()
+            service.start()
+        elif service_name == 'blood_pressure':
+            service = BloodPressureService()
+            service.start()
+        elif service_name == 'body_temperature':
+            service = BodyTemperatureService()
+            service.start()
+        elif service_name == 'thingspeak':
+            self.thingspeak_adapter.start_server()
+        else:
+            print(f"Service {service_name} is not available.")
 
-# Read DYP-ME003 sensor for presence
-def read_dyp_me003():
-    presence = GPIO.input(DYP_PIN)
-    return presence
 
-# Set up CherryPy server to retrieve MAC address
-class MACServer(object):
-    @cherrypy.expose
-    def index(self):
-        output = subprocess.check_output(['ifconfig', 'wlan0'])
-        return str(output)
-
-if __name__ == '__main__':
-    # db.create_table()
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(DYP_PIN, GPIO.IN)
-    GPIO.setwarnings(False)
-
-    # Start CherryPy server
-    conf = {
-        '/': {
-            'request.dispatch': cherrypy.dispatch.MethodDispatcher(),
-            'tools.sessions.on': True,
-        }
-    }
-    cherrypy.tree.mount(StepCount(), '/step', conf)
-    cherrypy.tree.mount(MACServer(), '/mac', conf)
-    cherrypy.engine.start()
-
-    # Read sensor data at regular intervals and write to file
+def simulate_sensors_data(entity: Entity):
     while True:
-        humidity, temperature = read_dht11()
-        presence = read_dyp_me003()
-        # Create JSON object with sensor data and timestamp
-        print('data', humidity, temperature)
-        data = {
-            'temperature': temperature,
-            'humidity': humidity,
-            'presence': presence,
-            'timestamp': datetime.datetime.now().astimezone(pytz.utc).strftime("%Y-%m-%d %H:%M:%S%z")
-        }
-        # Write sensor data to file
-        with open('sensor_data.json', 'a') as f:
-            f.write(json.dumps(data) + '\n')
-            print('file saved')
-        time.sleep(READING_INTERVAL)
+        time_to_sleep = random.randint(10, 20)
+        entity.send_data(entity.read_data())
+        time.sleep(time_to_sleep)
+
+
+def main():
+    db_handler = DatabaseHandler()
+    db_handler.connect()
+    db_handler.create_tables()
+
+    mqtt_handler = MqttHandler('simulation')
+    mqtt_handler.connect()
+
+    user1 = 'Pedro Loa'
+    user_passport1 = 'P12345678'
+    # device 1
+    device_name1 = 'RPi 4'
+    device_mac1 = '001B44113A'
+    device1 = Device(device_mac=device_mac1, user_passport=user_passport1, device_name=device_name1)
+    # Init sensors
+    body_temp_sensor = BodyTemperatureSensor(name='BodyTemperature', device_mac=device_mac1, db_handler=db_handler, mqtt_handler=mqtt_handler)
+    body_temp_sensor.set_mqtt_topic(passport_code=user_passport1)
+    # temp_humidity_sensor = TemperatureHumiditySensor(device_mac=device_mac1, db_handler=db_handler, mqtt_handler=mqtt_handler)
+    # temp_humidity_sensor.set_mqtt_topic(passport_code=user_passport1)
+
+    user2 = 'Joao Town'
+    user_passport2 = 'P23456789'
+    # device 2
+    device_name2 = 'RPi Zero'
+    device_mac2 = 'FF1B44113A'
+    device2 = Device(device_mac=device_mac2, user_passport=user_passport2, device_name=device_name2)
+    # device 3
+    device_name3 ='Arduino'
+    device_mac3 = 'DD1B44113F'
+    device3 = Device(device_mac=device_mac3, user_passport=user_passport2, device_name=device_name3)
+    # Init sensors
+    # blood_pressure_sensor = BloodPressureSensor(device_mac=device_mac2, db_handler=db_handler, mqtt_handler=mqtt_handler)
+    # blood_pressure_sensor.set_mqtt_topic(passport_code=user_passport2)
+    # Init actuators
+    # action_button = ActionButton(device_mac=device_mac3, db_handler=db_handler, mqtt_handler=mqtt_handler)
+    # action_button.set_mqtt_topic(passport_code=user_passport2)
+
+
+    # Init ServiceManager
+    service_manager = ServiceManager()
+    service_manager.start_service('air_conditioning')
+    service_manager.start_service('blood_pressure')
+    service_manager.start_service('body_temperature')
+    # service_manager.start_service('thingspeak')
+
+    # simulate readings and actions
+    threading.Thread(target=simulate_sensors_data, args=[body_temp_sensor]).start()
+    # threading.Thread(target=simulate_sensors_data, args=[blood_pressure_sensor]).start()
+    # threading.Thread(target=simulate_sensors_data, args=[temp_humidity_sensor]).start()
+    # threading.Thread(target=simulate_sensors_data, args=[action_button]).start()
+
+if __name__ == "__main__":
+    main()

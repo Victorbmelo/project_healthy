@@ -16,14 +16,9 @@ THINGSPEAK_MQTT_PORT = 1883
 
 class ThingSpeakAdapter:
     def __init__(self):
-        self._db = DatabaseHandler()
-        self._db.connect()
-
         # MQTT connection for local and ThingSpeak MQTT broker
-        self._local_mqtt = MqttHandler(
-            client_id='local-thingspeak-adapter'
-        )
-        self._local_mqtt.connect()
+        self._local_mqtt = MqttHandler(client_id='local-thingspeak-adapter')
+        self._local_mqtt.set_on_message_callback(self.on_message)
 
         self._thingspeak_mqtt = MqttHandler(
             client_id='CCwmLDwwLgY2HykqLggJGSE',
@@ -34,6 +29,14 @@ class ThingSpeakAdapter:
         )
         self._thingspeak_mqtt.connect()
 
+        # Start the MQTT listener in a separate thread
+        self.start()
+
+    def get_db_connection(self):
+        db = DatabaseHandler(client_id='ThingSpeakAdapter')
+        db.connect()
+        return db
+
     @cherrypy.expose
     def index(self):
         return "ThingSpeak Adapter is running."
@@ -42,7 +45,8 @@ class ThingSpeakAdapter:
     @cherrypy.tools.json_out()
     def get_device_data(self, user, device_mac):
         try:
-            channel_id = self.get_thingspeak_channel_id(user, device_mac)
+            db = self.get_db_connection()
+            channel_id = self.get_thingspeak_channel_id(db, user, device_mac)
             if not channel_id:
                 return {"error": "Channel ID not found for device"}
 
@@ -56,7 +60,8 @@ class ThingSpeakAdapter:
     @cherrypy.tools.json_out()
     def get_sensor_data(self, user, device_mac, sensor_id):
         try:
-            channel_id, field_id = self.get_thingspeak_channel_field(user, device_mac, "sensor", sensor_id)
+            db = self.get_db_connection()
+            channel_id, field_id = self.get_thingspeak_channel_field(db, user, device_mac, "sensor", sensor_id)
             if not channel_id or not field_id:
                 return {"error": "Channel or Field ID not found for sensor"}
 
@@ -67,7 +72,7 @@ class ThingSpeakAdapter:
         except requests.RequestException as e:
             return {"error": f"Failed to fetch sensor data: {e}"}
 
-    def get_thingspeak_channel_field(self, user_passport_code, device_mac, entity_type, entity_id):
+    def get_thingspeak_channel_field(self, db: DatabaseHandler, user_passport_code, device_mac, entity_type, entity_id):
         """
         Retrieve the ThinkSpeak channel key and field ID for a specific device and entity type.
 
@@ -79,20 +84,27 @@ class ThingSpeakAdapter:
         """
         if entity_type not in {"sensor", "actuator"}:
             return None, None
+        if 'sensor':
+            query_extra = ""
+        else:
+            query_extra = ""
+
 
         query = f"""
             SELECT D.thingspeak_channel_key, S.thingspeak_field_id
             FROM Devices D
-            JOIN Sensors S ON D.id = S.device_id
-            JOIN Users U ON D.user_id = U.id
+            JOIN Sensors S ON D.device_id = S.device_id
+            JOIN Users U ON D.user_id = U.user_id
             WHERE U.passport_code = ? AND D.mac_address = ? AND S.sensor_id = ?
         """
-        result = self._db.query_data(query, (user_passport_code, device_mac, entity_id))
+        print(f"[THINGSPEAK] Retrieve the ThinkSpeak channel: passport_code: {user_passport_code}, mac_address: {device_mac}, entity_id: {entity_id}")
+        result = db.query_data(query, (user_passport_code, device_mac, entity_id))
+        print(f"[THINGSPEAK] Retrieve the ThinkSpeak channel field ID: result: {result}")
         if result:
             return result[0]
         return None, None
 
-    def get_thingspeak_channel_id(self, user_passport_code, device_mac):
+    def get_thingspeak_channel_id(self, db: DatabaseHandler, user_passport_code: str, device_mac: str):
         """
         Retrieve the ThinkSpeak channel key for a specific device.
 
@@ -103,10 +115,12 @@ class ThingSpeakAdapter:
         query = """
             SELECT D.thingspeak_channel_key
             FROM Devices D
-            JOIN Users U ON D.user_id = U.id
+            JOIN Users U ON D.user_id = U.user_id
             WHERE U.passport_code = ? AND D.mac_address = ?
         """
-        result = self._db.query_data(query, (user_passport_code, device_mac))
+        print(f"[THINGSPEAK] Retrieve the ThinkSpeak channel: passport_code: {user_passport_code}, mac_address: {device_mac}")
+        result = db.query_data(query, (user_passport_code, device_mac))
+        print(f"[THINGSPEAK] Retrieve the ThinkSpeak channel: result: {result}")
         if result:
             return result[0][0]
         return None
@@ -122,37 +136,36 @@ class ThingSpeakAdapter:
         """
         mqtt_topic = f"channels/{channel_key}/publish/fields/field{field_id}"
         self._thingspeak_mqtt.publish(mqtt_topic, payload=str(message), qos=0)
-        print(f"Data sent to ThingSpeak MQTT broker: Topic: {mqtt_topic}, Payload: {message}")
+        print(f"[THINGSPEAK] Data sent to ThingSpeak MQTT broker: Topic: {mqtt_topic}, Payload: {message}")
 
-    def start(self):
-        """Start the simulation of sensor data readings and sending them to ThingSpeak."""
-        threading.Thread(target=self._listen_to_entities, daemon=True).start()
+    def on_message(self, client, userdata, message):
+        """Process incoming sensor data."""
+        payload = message.payload.decode('utf-8')
+        topic = message.topic
+        print(f"[THINGSPEAK] Received message from {topic}: {payload}")
+        try:
+            db = self.get_db_connection()
+            user_passport_code, service_name, device_mac, entity_type, entity_id = topic.lstrip('/').split('/')
+            channel_key, field_id = self.get_thingspeak_channel_field(db, user_passport_code, device_mac, entity_type, entity_id)
 
-    def _listen_to_entities(self):
-        """Listen to sensor data published locally and send it to ThingSpeak via MQTT."""
-        def on_message(client, userdata, message):
-            # Simulate processing the incoming sensor data
-            payload = message.payload.decode('utf-8')
-            topic = message.topic
-            print(f"Received message from {topic}: {payload}")
-
-            # Extract params from the topic
-            # topic format: <user_passport_code>/<service_name>/<device_mac>/<entity_type>[sensor|actuator]/<entity_id>
-            user_passport_code, service_name, device_mac, entity_type, entity_id = topic.split('/')
-
-            # Get the corresponding ThingSpeak channel and field information
-            channel_key, field_id = self.get_thingspeak_channel_field(user_passport_code, device_mac, entity_type, entity_id)
             if channel_key and field_id:
                 self.send_data_to_thingspeak_mqtt(channel_key, field_id, payload)
+        except Exception as e:
+            print(f"[THINGSPEAK] Error on_message: {e}")
 
-        # Subscribe to all entities topics
+    def start(self):
+        """Start the MQTT listener for local entities."""
+        self._local_mqtt.connect()
+        threading.Thread(target=self._listen_to_entities, daemon=True).start()
+
+    def start_server(self):
+        """Start the CherryPy server."""
+        cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8080})
+        cherrypy.quickstart(self)
+
+    def _listen_to_entities(self):
+        """Subscribe to local MQTT topics."""
         self._local_mqtt.subscribe("/+/+/+/+/+")
-        self._local_mqtt.set_on_message_callback(on_message)
-
-        # Keep the thread running
-        while True:
-            time.sleep(1)
-
 
 if __name__ == "__main__":
     cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8080})
