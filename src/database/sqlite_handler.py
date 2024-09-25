@@ -11,13 +11,14 @@ SCHEMA_PATH = os.path.join(SCRIPT_DIR, SCHEMA_FILENAME)
 
 
 class DatabaseHandler:
-    def __init__(self, db_file=DB_PATH, schema_file=SCHEMA_PATH):
+    def __init__(self, client_id=None, db_file=DB_PATH, schema_file=SCHEMA_PATH):
         """
         Initializes the database connection and schema file.
 
         :param str db_file: Name of the database file.
         :param str schema_file: Name of the file containing the SQL schema for table creation.
         """
+        self.client_id = client_id or ''
         self.db_file = db_file
         self.schema_file = schema_file
         self.conn = None
@@ -32,7 +33,7 @@ class DatabaseHandler:
                 self.conn = sqlite3.connect(self.db_file)
                 self.cursor = self.conn.cursor()
         except sqlite3.Error as e:
-            print(f"Error connecting to database: {e}")
+            print(f"[DB-{self.client_id}] Error connecting to database: {e}")
             raise
 
     def close(self):
@@ -43,7 +44,7 @@ class DatabaseHandler:
             try:
                 self.conn.close()
             except sqlite3.Error as e:
-                print(f"Error closing the database connection: {e}")
+                print(f"[DB-{self.client_id}] Error closing the database connection: {e}")
 
     def execute_script(self, script_file):
         """
@@ -57,10 +58,10 @@ class DatabaseHandler:
             self.cursor.executescript(script)
             self.conn.commit()
         except FileNotFoundError:
-            print(f"SQL script file not found: {script_file}")
+            print(f"[DB-{self.client_id}] SQL script file not found: {script_file}")
             raise FileNotFoundError(f"SQL script file not found: {script_file}")
         except sqlite3.Error as e:
-            print(f"Error executing SQL script: {e}")
+            print(f"[DB-{self.client_id}] Error executing SQL script: {e}")
             self.conn.rollback()  # Rollback in case of error
 
     def create_tables(self):
@@ -83,7 +84,7 @@ class DatabaseHandler:
             self.cursor.execute(sql, tuple(kwargs.values()))
             self.conn.commit()
         except sqlite3.Error as e:
-            print(f"Error inserting data into table {table_name}: {e}")
+            print(f"[DB-{self.client_id}] Error inserting data into table {table_name}: {e}")
             self.conn.rollback()  # Rollback in case of error
 
     def query_data(self, query, params=()):
@@ -98,7 +99,7 @@ class DatabaseHandler:
             self.cursor.execute(query, params)
             return self.cursor.fetchall()
         except sqlite3.Error as e:
-            print(f"Error querying data: {e}")
+            print(f"[DB-{self.client_id}] Error querying data: {e}")
             return []
 
     def execute_query(self, query, params=()):
@@ -112,7 +113,7 @@ class DatabaseHandler:
             self.cursor.execute(query, params)
             self.conn.commit()
         except sqlite3.Error as e:
-            print(f"Error executing query: {e}")
+            print(f"[DB-{self.client_id}] Error executing query: {e}")
             self.conn.rollback()
 
     @staticmethod
