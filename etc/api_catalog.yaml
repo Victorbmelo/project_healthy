@@ -1,0 +1,376 @@
+swagger: '2.0'
+info:
+  title: Project Healthy
+  version: 1.0.0
+paths:
+  /patient:
+    get:
+      summary: Retrieve a list of patients or a specific patient by ID
+      parameters:
+        - name: id
+          in: query
+          type: integer
+          description: Patient ID (optional)
+      responses:
+        200:
+          description: List of patients or a single patient
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Patient'
+    post:
+      summary: Create a new patient
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/Patient'
+      responses:
+        201:
+          description: Patient created successfully
+    put:
+      summary: Update an existing patient
+      parameters:
+        - name: id
+          in: query
+          type: integer
+          required: true
+          description: Patient ID
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/Patient'
+      responses:
+        200:
+          description: Patient updated successfully
+    delete:
+      summary: Delete a patient by ID
+      parameters:
+        - name: id
+          in: query
+          type: integer
+          required: true
+          description: Patient ID
+      responses:
+        200:
+          description: Patient deleted successfully
+
+  /device:
+    get:
+      summary: Retrieve a list of devices or a specific device by ID
+      parameters:
+        - name: id
+          in: query
+          type: integer
+          description: Device ID (optional)
+      responses:
+        200:
+          description: List of devices or a single device
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Device'
+    post:
+      summary: Create a new device
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/Device'
+      responses:
+        201:
+          description: Device created successfully
+    put:
+      summary: Update an existing device
+      parameters:
+        - name: id
+          in: query
+          type: integer
+          required: true
+          description: Device ID
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/Device'
+      responses:
+        200:
+          description: Device updated successfully
+    delete:
+      summary: Delete a device by ID
+      parameters:
+        - name: id
+          in: query
+          type: integer
+          required: true
+          description: Device ID
+      responses:
+        200:
+          description: Device deleted successfully
+
+  /entity:
+    get:
+      summary: Retrieve a list of device entities or a specific device entity by ID
+      parameters:
+        - name: id
+          in: query
+          type: integer
+          description: Device Entity ID (optional)
+      responses:
+        200:
+          description: List of device entities or a single entity
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/DeviceEntity'
+    post:
+      summary: Create a new device entity
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/DeviceEntity'
+      responses:
+        201:
+          description: Device entity created successfully
+    put:
+      summary: Update an existing device entity
+      parameters:
+        - name: id
+          in: query
+          type: integer
+          required: true
+          description: Device Entity ID
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/DeviceEntity'
+      responses:
+        200:
+          description: Device entity updated successfully
+    delete:
+      summary: Delete a device entity by ID
+      parameters:
+        - name: id
+          in: query
+          type: integer
+          required: true
+          description: Device Entity ID
+      responses:
+        200:
+          description: Device entity deleted successfully
+
+  /telegrambot:
+    get:
+      summary: Retrieve a list of Telegram bots or a specific bot by ID
+      parameters:
+        - name: bot_id
+          in: query
+          type: integer
+          description: Bot ID (optional)
+      responses:
+        200:
+          description: List of Telegram bots or a single bot
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/TelegramBot'
+    post:
+      summary: Create a new Telegram bot
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/TelegramBot'
+      responses:
+        201:
+          description: Telegram bot created successfully
+    put:
+      summary: Update an existing Telegram bot
+      parameters:
+        - name: bot_id
+          in: query
+          type: integer
+          required: true
+          description: Bot ID
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/TelegramBot'
+      responses:
+        200:
+          description: Telegram bot updated successfully
+    delete:
+      summary: Delete a Telegram bot by ID
+      parameters:
+        - name: bot_id
+          in: query
+          type: integer
+          required: true
+          description: Bot ID
+      responses:
+        200:
+          description: Telegram bot deleted successfully
+
+  /endpoints:
+    get:
+      summary: Retrieve a list of endpoints or a specific endpoint by ID
+      parameters:
+        - name: endpoint_id
+          in: query
+          type: integer
+          description: Endpoint ID (optional)
+      responses:
+        200:
+          description: List of endpoints or a single endpoint
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Endpoint'
+    post:
+      summary: Create a new endpoint
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/Endpoint'
+      responses:
+        201:
+          description: Endpoint created successfully
+    put:
+      summary: Update an existing endpoint
+      parameters:
+        - name: endpoint_id
+          in: query
+          type: integer
+          required: true
+          description: Endpoint ID
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/Endpoint'
+      responses:
+        200:
+          description: Endpoint updated successfully
+    delete:
+      summary: Delete an endpoint by ID
+      parameters:
+        - name: endpoint_id
+          in: query
+          type: integer
+          required: true
+          description: Endpoint ID
+      responses:
+        200:
+          description: Endpoint deleted successfully
+
+  /login:
+    post:
+      summary: Authenticate a user
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/Login'
+      responses:
+        200:
+          description: Authentication successful
+          schema:
+            $ref: '#/definitions/LoginResponse'
+        401:
+          description: Authentication failed
+
+definitions:
+  Patient:
+    type: object
+    properties:
+      name:
+        type: string
+      address:
+        type: string
+      emergency_contact:
+        type: string
+      passport_code:
+        type: string
+      admin_id:
+        type: integer
+  Device:
+    type: object
+    properties:
+      mac_address:
+        type: string
+      device_name:
+        type: string
+      device_type:
+        type: string
+      location:
+        type: string
+      is_active:
+        type: boolean
+      patient_id:
+        type: integer
+      admin_id:
+        type: integer
+      thingspeak_channel_key:
+        type: string
+  DeviceEntity:
+    type: object
+    properties:
+      entity_type:
+        type: string
+      entity_name:
+        type: string
+      device_id:
+        type: integer
+      is_active:
+        type: boolean
+      last_reading:
+        type: string
+      last_reading_timestamp:
+        type: string
+      service_id:
+        type: integer
+      thingspeak_field_id:
+        type: integer
+  TelegramBot:
+    type: object
+    properties:
+      bot_token:
+        type: string
+      chat_id:
+        type: string
+      patient_id:
+        type: integer
+  Endpoint:
+    type: object
+    properties:
+      service_id:
+        type: integer
+      entity_id:
+        type: integer
+      endpoint:
+        type: string
+  Login:
+    type: object
+    properties:
+      username:
+        type: string
+      password:
+        type: string
+  LoginResponse:
+    type: object
+    properties:
+      status:
+        type: string
+      user:
+        type: object
