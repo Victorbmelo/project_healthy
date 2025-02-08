@@ -26,6 +26,7 @@ class MqttHandler:
         self._password = password
         self._tls = tls
         self._client = mqtt.Client(client_id=self._client_id)
+        self._client.ws_set_options("/mqtt")
         self._client.enable_logger()
 
 
@@ -85,7 +86,7 @@ class MqttHandler:
         :param qos: Quality of Service level (default is 0)
         :param retain: Retain the message (default is False)
         """
-        print(f"Publishing message to topic {topic} with QoS {qos}, retain={retain}")
+        print(f"Publishing message to topic {topic} with QoS {qos}, msg={payload}")
         result = self._client.publish(topic, payload, qos, retain)
         result.wait_for_publish()
 
