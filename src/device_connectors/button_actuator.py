@@ -5,8 +5,8 @@ SERVICE_NAME = 'action'
 
 
 class ActionButton(DeviceEntity):
-    def __init__(self):
-        super().__init__(entity_type=ENTITY_TYPE, service_name=SERVICE_NAME)
+    def __init__(self, *args, **kwargs):
+        super().__init__(entity_type=ENTITY_TYPE, service_name=SERVICE_NAME, *args, **kwargs)
 
     def send_data(self, action):
         if self.mqtt_topic:
