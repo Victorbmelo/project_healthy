@@ -227,6 +227,12 @@ class APIHandler:
 
 
 if __name__ == "__main__":
+
+    cherrypy.config.update({
+        'server.socket_host': '0.0.0.0',  # Optional: listen on all interfaces
+        'server.socket_port': 8080,       # Set the desired port here
+    })
+
     cherrypy.quickstart(APIHandler(), '/', {
         '/': {
             'tools.sessions.on': True,

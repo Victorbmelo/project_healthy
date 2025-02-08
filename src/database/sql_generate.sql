@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS Devices (
   is_active BOOLEAN DEFAULT 0,
   patient_id INTEGER NOT NULL,
   admin_id INTEGER NOT NULL,
+  thingspeak_channel_id TEXT,
   thingspeak_channel_key TEXT,
   FOREIGN KEY (patient_id) REFERENCES Patients(patient_id),
   FOREIGN KEY (admin_id) REFERENCES Admins(admin_id)
@@ -69,7 +70,8 @@ CREATE TABLE IF NOT EXISTS Endpoints (
   entity_id INTEGER NOT NULL,
   endpoint TEXT NOT NULL,
   FOREIGN KEY (service_id) REFERENCES Services(service_id),
-  FOREIGN KEY (entity_id) REFERENCES DeviceEntities(entity_id)
+  FOREIGN KEY (entity_id) REFERENCES DeviceEntities(entity_id),
+  UNIQUE (service_id, entity_id)  -- Ensure one record per service-entity combination
 );
 
 -- EntityConfigurations Table

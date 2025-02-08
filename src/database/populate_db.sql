@@ -20,7 +20,9 @@ VALUES
 (2, 'air_conditioning', 'Air Conditioning Control', 'Controls air conditioning system', false, NULL, 'MQTT'),
 (3, 'blood_pressure', 'Blood Pressure Monitoring', 'Monitors blood pressure levels', false, NULL, 'MQTT'),
 (4, 'telegram_bot', 'Telegram Bot Notifications', 'Sends notifications via Telegram', true, '2024-08-22 21:28:49.076691', 'Telegram'),
-(5, 'thingspeak', 'ThingSpeak Integration', 'Sends data to ThingSpeak', true, '2024-08-22 21:28:49.076691', 'HTTP');
+(5, 'thingspeak', 'ThingSpeak Integration', 'Sends data to ThingSpeak', true, '2024-08-22 21:28:49.076691', 'HTTP'),
+(6, 'action', 'Actuators', 'Execute an Action', true, '2024-08-22 21:28:49.076691', 'MQTT');
+
 
 -- Devices
 INSERT INTO Devices (device_id, mac_address, device_name, device_type, location, is_active, patient_id, admin_id, thingspeak_channel_key)
@@ -33,9 +35,11 @@ VALUES
 INSERT INTO DeviceEntities (entity_id, entity_type, entity_name, device_id, is_active, last_reading, last_reading_timestamp, service_id, thingspeak_field_id)
 VALUES
 (1, 'sensor', 'Temperature Sensor', 1, true, '22.5', '2024-09-08 19:02:14.163875+00:00', 1, NULL),
-(2, 'sensor', 'Humidity Sensor', 1, true, '45', '2024-09-08 19:02:14.163875+00:00', NULL, NULL),
+(2, 'sensor', 'Humidity Sensor', 1, true, '45', '2024-09-08 19:02:14.163875+00:00', 2, NULL),
 (3, 'sensor', 'Blood Pressure Sensor', 2, true, '120/80', '2024-09-08 19:02:14.163875+00:00', 3, NULL),
-(4, 'actuator', 'Bedroom Lamp', 3, true, NULL, NULL, NULL, NULL);
+(4, 'actuator', 'Bedroom Lamp', 3, true, NULL, NULL, NULL, NULL),
+(5, 'sensor', 'Temperature Sensor2', 3, true, NULL, NULL, 1, NULL),
+(6, 'sensor', 'Blood Pressure2', 1, true, NULL, NULL, 3, NULL);
 
 -- Endpoints
 INSERT INTO Endpoints (endpoint_id, service_id, entity_id, endpoint)
