@@ -6,8 +6,9 @@ SERVICE_NAME = 'body_temp_check'
 
 
 class BodyTemperatureSensor(DeviceEntity):
-    def __init__(self):
-        super().__init__(entity_type=ENTITY_TYPE, service_name=SERVICE_NAME)
+    def __init__(self, *args, **kwargs):
+
+        super().__init__(entity_type=ENTITY_TYPE, service_name=SERVICE_NAME, *args, **kwargs)
 
     def read_data(self):
         """
@@ -20,6 +21,7 @@ class BodyTemperatureSensor(DeviceEntity):
     def send_data(self, b_temp):
         if self.mqtt_topic:
             data = {'body_temperature': b_temp}
-            self.mqtt_handler.publish(self.mqtt_topic, str(data))
+            self.mqtt_handler.publish(self.mqtt_topic, str(b_temp))
+            print(f"Sending data: {data}, to {self.mqtt_topic}.")
         else:
             print("MQTT topic not set. Data not sent.")
