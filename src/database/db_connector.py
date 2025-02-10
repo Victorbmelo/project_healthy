@@ -218,9 +218,15 @@ class APIHandler:
     def login(self, *uri, **params):
         if cherrypy.request.method == 'POST':
             data = cherrypy.request.json
-            query = "SELECT * FROM Login WHERE username = ? AND password = ?"
-            result = self.db.query_data(query, (data['username'], data['password']))
-            return {"status": "success", "user": result[0]} if result else {"status": "failure"}
+            query = "SELECT * FROM Admins WHERE email = ? AND password = ?"
+            result = self.db.query_data(query, (data['email'], data['password']))
+            if result:
+                user_data = dict(result[0])  # Convert sqlite3.Row to dictionary
+                return {"status": "success", "user": user_data}
+            else:
+                return {"status": "failure"}
+
+            #return {"status": "success", "user": result[0]} if result else {"status": "failure"}
 
     def __del__(self):
         self.db.close()
