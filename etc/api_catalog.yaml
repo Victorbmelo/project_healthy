@@ -273,6 +273,168 @@ paths:
         200:
           description: Endpoint deleted successfully
 
+  /schedule:
+    get:
+      summary: Retrieve a list of schedules or a specific schedule by ID
+      parameters:
+        - name: schedule_id
+          in: query
+          type: integer
+          description: Schedule ID (optional)
+      responses:
+        200:
+          description: List of schedules or a single schedule
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Schedule'
+    post:
+      summary: Create a new schedule
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/Schedule'
+      responses:
+        201:
+          description: Schedule created successfully
+    put:
+      summary: Update an existing schedule
+      parameters:
+        - name: schedule_id
+          in: query
+          type: integer
+          required: true
+          description: Schedule ID
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/Schedule'
+      responses:
+        200:
+          description: Schedule updated successfully
+    delete:
+      summary: Delete a schedule by ID
+      parameters:
+        - name: schedule_id
+          in: query
+          type: integer
+          required: true
+          description: Schedule ID
+      responses:
+        200:
+          description: Schedule deleted successfully
+
+  /entityconfig:
+    get:
+      summary: Retrieve a list of entity configurations or a specific configuration by ID
+      parameters:
+        - name: config_id
+          in: query
+          type: integer
+          description: Configuration ID (optional)
+      responses:
+        200:
+          description: List of entity configurations or a single configuration
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/EntityConfiguration'
+    post:
+      summary: Create a new entity configuration
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/EntityConfiguration'
+      responses:
+        201:
+          description: Entity configuration created successfully
+    put:
+      summary: Update an existing entity configuration
+      parameters:
+        - name: config_id
+          in: query
+          type: integer
+          required: true
+          description: Configuration ID
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/EntityConfiguration'
+      responses:
+        200:
+          description: Entity configuration updated successfully
+    delete:
+      summary: Delete an entity configuration by ID
+      parameters:
+        - name: config_id
+          in: query
+          type: integer
+          required: true
+          description: Configuration ID
+      responses:
+        200:
+          description: Entity configuration deleted successfully
+
+  /configkeys:
+    get:
+      summary: Retrieve a list of configuration keys or a specific key by its name
+      parameters:
+        - name: config_key
+          in: query
+          type: string
+          description: Configuration key (optional)
+      responses:
+        200:
+          description: List of configuration keys or a single key
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/ConfigKey'
+    post:
+      summary: Create a new configuration key
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/ConfigKey'
+      responses:
+        201:
+          description: Configuration key created successfully
+    put:
+      summary: Update an existing configuration key
+      parameters:
+        - name: config_key
+          in: query
+          type: string
+          required: true
+          description: Configuration key
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/ConfigKey'
+      responses:
+        200:
+          description: Configuration key updated successfully
+    delete:
+      summary: Delete a configuration key by its name
+      parameters:
+        - name: config_key
+          in: query
+          type: string
+          required: true
+          description: Configuration key
+      responses:
+        200:
+          description: Configuration key deleted successfully
+
   /login:
     post:
       summary: Authenticate a user
@@ -360,6 +522,45 @@ definitions:
         type: integer
       endpoint:
         type: string
+  Schedule:
+    type: object
+    properties:
+      entity_id:
+        type: integer
+      day_of_week:
+        type: string
+        enum: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday]
+      start_time:
+        type: string
+      end_time:
+        type: string
+      action:
+        type: string
+        enum: [ON, OFF]
+      repeat:
+        type: boolean
+  EntityConfiguration:
+    type: object
+    properties:
+      entity_id:
+        type: integer
+      config_key:
+        type: string
+      config_value:
+        type: string
+  ConfigKey:
+    type: object
+    properties:
+      config_key:
+        type: string
+      description:
+        type: string
+      value_type:
+        type: string
+        enum: [numeric, boolean, string, json]
+      apply_to:
+        type: string
+        enum: [sensor, actuator]
   Login:
     type: object
     properties:

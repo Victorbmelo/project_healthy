@@ -13,6 +13,19 @@ SCHEMA_PATH = os.path.join(SCRIPT_DIR, SCHEMA_FILENAME)
 STATUS_SUCCESS = {"status": "success"}
 STATUS_ERROR = {"status": "error", "message": "Invalid request method or missing ID"}
 
+PRIMARY_KEYS = {
+    "Patients": "patient_id",
+    "Devices": "device_id",
+    "DeviceEntities": "entity_id",
+    "TelegramBot": "bot_id",
+    "Endpoints": "endpoint_id",
+    "Schedules": "schedule_id",
+    "Admins": "admin_id",
+    "Services": "service_id",
+    "EntityConfigurations": "config_id",
+    "ConfigKeys": "config_key"
+}
+
 
 class DatabaseHandler:
     def __init__(self, db_file=DB_PATH, schema_file=SCHEMA_PATH):
@@ -75,7 +88,8 @@ class APIHandler:
         base_query = f"SELECT * FROM {table_name}"
         try:
             if id:
-                base_query += f" WHERE {table_name[:-1]}_id = ?"
+                pk = PRIMARY_KEYS.get(table_name, table_name[:-1] + "_id")
+                base_query += f" WHERE {pk} = ?"
                 result = self.db.query_data(base_query, (id,))
             else:
                 query, values = self.apply_filters(base_query, params)
@@ -83,14 +97,12 @@ class APIHandler:
                 print("values", values)
                 result = self.db.query_data(query, values)
             return [dict(row) for row in result]
-
         except sqlite3.OperationalError as e:
             # Check if the error is due to a missing column (you can refine this further)
             cherrypy.log(f"Error: {str(e)}")
             # Return a Bad Request response with the error message
             cherrypy.response.status = 400
             return {"status": "error", "message": f"Bad Request: Column not found or query error({e})"}
-
 
     def handle_post_request(self, table_name, data, fields):
         columns = ", ".join(fields)
@@ -100,20 +112,22 @@ class APIHandler:
         return STATUS_SUCCESS
 
     def handle_put_request(self, table_name, id, data, fields):
+        pk = PRIMARY_KEYS.get(table_name, table_name[:-1] + "_id")
         set_clause = ", ".join([f"{field} = ?" for field in fields])
-        query = f"UPDATE {table_name} SET {set_clause} WHERE {table_name[:-1]}_id = ?"
+        query = f"UPDATE {table_name} SET {set_clause} WHERE {pk} = ?"
         self.db.execute_query(query, tuple(data[field] for field in fields) + (id,))
         return STATUS_SUCCESS
 
     def handle_delete_request(self, table_name, id):
-        query = f"DELETE FROM {table_name} WHERE {table_name[:-1]}_id = ?"
+        pk = PRIMARY_KEYS.get(table_name, table_name[:-1] + "_id")
+        query = f"DELETE FROM {table_name} WHERE {pk} = ?"
         self.db.execute_query(query, (id,))
         return STATUS_SUCCESS
 
-    @cherrypy.expose
+    @cherrypy.expose(alias='patient')
     @cherrypy.tools.json_out()
     @cherrypy.tools.json_in()
-    def patient(self, *uri, **params):
+    def patients(self, *uri, **params):
         method = cherrypy.request.method
         params = cherrypy.request.params
         data = cherrypy.request.json if method in ['POST', 'PUT'] else None
@@ -122,18 +136,19 @@ class APIHandler:
         if method == 'GET':
             return self.handle_get_request("Patients", id, params)
         elif method == 'POST':
-            return self.handle_post_request("Patients", data, ["name", "address", "emergency_contact", "passport_code", "admin_id"])
+            required_fields = ["name", "address", "emergency_contact", "passport_code", "admin_id"]
+            return self.handle_post_request("Patients", data, required_fields)
         elif method == 'PUT' and id:
-            return self.handle_put_request("Patients", id, data, ["name", "address", "emergency_contact", "passport_code", "admin_id"])
+            return self.handle_put_request("Patients", id, data, data.keys())
         elif method == 'DELETE' and id:
             return self.handle_delete_request("Patients", id)
 
         return STATUS_ERROR
 
-    @cherrypy.expose
+    @cherrypy.expose(alias='device')
     @cherrypy.tools.json_out()
     @cherrypy.tools.json_in()
-    def device(self, *uri, **params):
+    def devices(self, *uri, **params):
         method = cherrypy.request.method
         params = cherrypy.request.params
         data = cherrypy.request.json if method in ['POST', 'PUT'] else None
@@ -142,18 +157,19 @@ class APIHandler:
         if method == 'GET':
             return self.handle_get_request("Devices", id, params)
         elif method == 'POST':
-            return self.handle_post_request("Devices", data, ["mac_address", "device_name", "device_type", "location", "is_active", "patient_id", "admin_id", "thingspeak_channel_key"])
+            required_fields = ["mac_address", "device_name", "device_type", "patient_id", "admin_id"]
+            return self.handle_post_request("Devices", data, required_fields)
         elif method == 'PUT' and id:
-            return self.handle_put_request("Devices", id, data, ["mac_address", "device_name", "device_type", "location", "is_active", "patient_id", "admin_id", "thingspeak_channel_key"])
+            return self.handle_put_request("Devices", id, data, data.keys())
         elif method == 'DELETE' and id:
             return self.handle_delete_request("Devices", id)
 
         return STATUS_ERROR
 
-    @cherrypy.expose
+    @cherrypy.expose(alias='entity')
     @cherrypy.tools.json_out()
     @cherrypy.tools.json_in()
-    def entity(self, *uri, **params):
+    def entities(self, *uri, **params):
         method = cherrypy.request.method
         params = cherrypy.request.params
         data = cherrypy.request.json if method in ['POST', 'PUT'] else None
@@ -162,9 +178,10 @@ class APIHandler:
         if method == 'GET':
             return self.handle_get_request("DeviceEntities", id, params)
         elif method == 'POST':
-            return self.handle_post_request("DeviceEntities", data, ["entity_type", "entity_name", "device_id", "is_active", "last_reading", "last_reading_timestamp", "service_id", "thingspeak_field_id"])
+            required_fields = ["entity_type", "entity_name", "device_id"]
+            return self.handle_post_request("DeviceEntities", data, required_fields)
         elif method == 'PUT' and id:
-            return self.handle_put_request("DeviceEntities", id, data, ["entity_type", "entity_name", "device_id", "is_active", "last_reading", "last_reading_timestamp", "service_id", "thingspeak_field_id"])
+            return self.handle_put_request("DeviceEntities", id, data, data.keys())
         elif method == 'DELETE' and id:
             return self.handle_delete_request("DeviceEntities", id)
 
@@ -191,7 +208,7 @@ class APIHandler:
 
         return STATUS_ERROR
 
-    @cherrypy.expose
+    @cherrypy.expose(alias='endpoint')
     @cherrypy.tools.json_out()
     @cherrypy.tools.json_in()
     def endpoints(self, *uri, **params):
@@ -212,14 +229,121 @@ class APIHandler:
 
         return STATUS_ERROR
 
+    @cherrypy.expose(alias='schedule')
+    @cherrypy.tools.json_out()
+    @cherrypy.tools.json_in()
+    def schedules(self, *uri, **params):
+        method = cherrypy.request.method
+        params = cherrypy.request.params
+        data = cherrypy.request.json if method in ['POST', 'PUT'] else None
+        schedule_id = params.get('schedule_id')
+
+        if method == 'GET':
+            return self.handle_get_request("Schedules", schedule_id, params)
+        elif method == 'POST':
+            required_fields = required_fields = ['entity_id', 'day_of_week', 'start_time', 'action']
+            return self.handle_post_request("Schedules", data, required_fields)
+        elif method == 'PUT' and schedule_id:
+            return self.handle_put_request("Schedules", schedule_id, data, data.keys())
+        elif method == 'DELETE' and schedule_id:
+            return self.handle_delete_request("Schedules", schedule_id)
+
+        return STATUS_ERROR
+
+    @cherrypy.expose(alias='admin')
+    @cherrypy.tools.json_out()
+    @cherrypy.tools.json_in()
+    def admins(self, *uri, **params):
+        method = cherrypy.request.method
+        params = cherrypy.request.params
+        data = cherrypy.request.json if method in ['POST', 'PUT'] else None
+        admin_id = params.get('admin_id')
+
+        if method == 'GET':
+            return self.handle_get_request("Admins", admin_id, params)
+        elif method == 'POST':
+            required_fields = ['name', 'email', 'password']
+            return self.handle_post_request("Admins", data, required_fields)
+        elif method == 'PUT' and admin_id:
+            return self.handle_put_request("Admins", admin_id, data, data.keys())
+        elif method == 'DELETE' and admin_id:
+            return self.handle_delete_request("Admins", admin_id)
+
+        return STATUS_ERROR
+
+    @cherrypy.expose(alias='service')
+    @cherrypy.tools.json_out()
+    @cherrypy.tools.json_in()
+    def services(self, *uri, **params):
+        method = cherrypy.request.method
+        params = cherrypy.request.params
+        data = cherrypy.request.json if method in ['POST', 'PUT'] else None
+        service_id = params.get('service_id')
+
+        if method == 'GET':
+            return self.handle_get_request("Services", service_id, params)
+        elif method == 'POST':
+            required_fields = ['name', 'alias', 'protocol']
+            return self.handle_post_request("Services", data, required_fields)
+        elif method == 'PUT' and service_id:
+            return self.handle_put_request("Services", service_id, data, data.keys())
+        elif method == 'DELETE' and service_id:
+            return self.handle_delete_request("Services", service_id)
+
+        return STATUS_ERROR
+
+    @cherrypy.expose(alias='entityconfig')
+    @cherrypy.tools.json_out()
+    @cherrypy.tools.json_in()
+    def entityconfigurations(self, *uri, **params):
+        method = cherrypy.request.method
+        params = cherrypy.request.params
+        data = cherrypy.request.json if method in ['POST', 'PUT'] else None
+        config_id = params.get('config_id')
+
+        if method == 'GET':
+            return self.handle_get_request("EntityConfigurations", config_id, params)
+        elif method == 'POST':
+            # Campos obrigatórios: entity_id, config_key e config_value
+            required_fields = ['entity_id', 'config_key', 'config_value']
+            return self.handle_post_request("EntityConfigurations", data, required_fields)
+        elif method == 'PUT' and config_id:
+            return self.handle_put_request("EntityConfigurations", config_id, data, data.keys())
+        elif method == 'DELETE' and config_id:
+            return self.handle_delete_request("EntityConfigurations", config_id)
+
+        return STATUS_ERROR
+
+    @cherrypy.expose(alias='configkey')
+    @cherrypy.tools.json_out()
+    @cherrypy.tools.json_in()
+    def configkeys(self, *uri, **params):
+        method = cherrypy.request.method
+        params = cherrypy.request.params
+        data = cherrypy.request.json if method in ['POST', 'PUT'] else None
+        key = params.get('config_key')
+
+        if method == 'GET':
+            return self.handle_get_request("ConfigKeys", key, params)
+        elif method == 'POST':
+            # Campos obrigatórios: config_key, description, value_type e apply_to
+            required_fields = ['config_key', 'description', 'value_type', 'apply_to']
+            return self.handle_post_request("ConfigKeys", data, required_fields)
+        elif method == 'PUT' and key:
+            return self.handle_put_request("ConfigKeys", key, data, data.keys())
+        elif method == 'DELETE' and key:
+            return self.handle_delete_request("ConfigKeys", key)
+
+        return STATUS_ERROR
+
     @cherrypy.expose
     @cherrypy.tools.json_out()
     @cherrypy.tools.json_in()
     def login(self, *uri, **params):
         if cherrypy.request.method == 'POST':
             data = cherrypy.request.json
-            query = "SELECT * FROM Login WHERE username = ? AND password = ?"
-            result = self.db.query_data(query, (data['username'], data['password']))
+            query = "SELECT * FROM Admins WHERE email = ? AND password = ?"
+            result = self.db.query_data(query, (data['email'], data['password']))
             return {"status": "success", "user": result[0]} if result else {"status": "failure"}
 
     def __del__(self):
