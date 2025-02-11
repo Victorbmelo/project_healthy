@@ -7,6 +7,7 @@ SERVICE_NAME = 'body_temp_check'
 
 class BodyTemperatureSensor(DeviceEntity):
     def __init__(self, *args, **kwargs):
+
         super().__init__(entity_type=ENTITY_TYPE, service_name=SERVICE_NAME, *args, **kwargs)
 
     def read_data(self):
