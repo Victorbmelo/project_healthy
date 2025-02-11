@@ -99,9 +99,9 @@ def main():
     # t2 = threading.Thread(target=simulate_sensors_data, args=[temp_humidity_sensor])
     # t2.daemon = True
     # t2.start()
-    t3 = threading.Thread(target=simulate_sensors_data, args=[blood_pressure_sensor2])
-    t3.daemon = True
-    t3.start()
+    # t3 = threading.Thread(target=simulate_sensors_data, args=[blood_pressure_sensor2])
+    # t3.daemon = True
+    # t3.start()
     # t4 = threading.Thread(target=simulate_sensors_data, args=[air_temp_sensor])
     # t4.daemon = True
     # t4.start()
