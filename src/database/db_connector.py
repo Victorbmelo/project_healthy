@@ -240,11 +240,36 @@ class APIHandler:
 
         if method == 'GET':
             return self.handle_get_request("Schedules", schedule_id, params)
+
         elif method == 'POST':
-            required_fields = required_fields = ['entity_id', 'day_of_week', 'start_time', 'action']
-            return self.handle_post_request("Schedules", data, required_fields)
+            # Required fields for a schedule record
+            required_fields = ['entity_id', 'day_of_week', 'start_time', 'action']
+            # Check for optional fields in the payload; e.g., repeat and end_time.
+            optional_fields = []
+            if "repeat" in data:
+                optional_fields.append("repeat")
+            if "end_time" in data:
+                optional_fields.append("end_time")
+            fields_to_insert = required_fields + optional_fields
+
+            # If day_of_week is provided as a list, iterate over each day and create a record.
+            if isinstance(data.get("day_of_week"), list):
+                responses = []
+                for day in data["day_of_week"]:
+                    entry = data.copy()
+                    entry["day_of_week"] = day  # Set a single day for this record
+                    responses.append(self.handle_post_request("Schedules", entry, fields_to_insert))
+                return responses
+            else:
+                return self.handle_post_request("Schedules", data, fields_to_insert)
+
         elif method == 'PUT' and schedule_id:
+            # For updating, we assume day_of_week is a single value.
+            if isinstance(data.get("day_of_week"), list):
+                # If a list is passed during update, choose the first element.
+                data["day_of_week"] = data["day_of_week"][0]
             return self.handle_put_request("Schedules", schedule_id, data, data.keys())
+
         elif method == 'DELETE' and schedule_id:
             return self.handle_delete_request("Schedules", schedule_id)
 
