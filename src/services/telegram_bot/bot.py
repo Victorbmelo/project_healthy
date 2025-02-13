@@ -57,22 +57,23 @@ class HealthmonitorBot:
         message = msg['text']
 
         if message == "/start":
-            self.bot.sendMessage(chat_ID, text='Welcome to the healthcare monitor.')
-            self.bot.sendMessage(chat_ID, text='Please enter the passport code of the patient you want to monitor.')
+            self.bot.sendMessage(chat_ID, text='👋 Welcome to the **Healthcare Monitor** 🏥')
+            self.bot.sendMessage(chat_ID, text='📄Please Enter the Passport Code of the Patient You Want to Monitor.')
         else:
             passport_code = message
             data = dbHandler.GetRequest(passport_code)
 
             if not data:
-                self.bot.sendMessage(chat_ID, text="The passport code does not exist.")
+                self.bot.sendMessage(chat_ID, text="❌The Passport Code Does Not Exist.")
             else:
-                self.bot.sendMessage(chat_ID, text="Passport code is received correctly.")
+                self.bot.sendMessage(chat_ID, text="✅The Passport Code is Received Correctly.")
+                # these are shown on bot
                 buttons = [[
-                    InlineKeyboardButton(text='Blood Pressure', callback_data=f'blood_pressure:{passport_code}'),
-                    InlineKeyboardButton(text='Temperature', callback_data=f'temperature:{passport_code}')
+                    InlineKeyboardButton(text='🩺Blood Pressure', callback_data=f'blood_pressure:{passport_code}'),
+                    InlineKeyboardButton(text='🌡️Temperature', callback_data=f'temperature:{passport_code}')
                 ]]
                 keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
-                self.bot.sendMessage(chat_ID, text='What do you want to monitor?', reply_markup=keyboard)
+                self.bot.sendMessage(chat_ID, text='❤️What Do You Want to Monitor?', reply_markup=keyboard)
 
     
     #this function will run when you get something from keyboard or from other API(microservice)  you get something
@@ -92,16 +93,16 @@ class HealthmonitorBot:
 
         if "blood_pressure:" in query_data and "current_data" not in query_data and "historical_data" not in query_data:
             buttons = [
-                [InlineKeyboardButton(text='Current Data', callback_data=f'current_data:blood_pressure:{passport_code}')],
-                [InlineKeyboardButton(text='Historical Data', callback_data=f'historical_data:blood_pressure:{passport_code}')]
+                [InlineKeyboardButton(text='📊Current Data🩺', callback_data=f'current_data:blood_pressure:{passport_code}')],
+                [InlineKeyboardButton(text='📜Historical Data🩺', callback_data=f'historical_data:blood_pressure:{passport_code}')]
             ]
             keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
             self.bot.sendMessage(chat_ID, text='Choose the data type:', reply_markup=keyboard)
 
         elif "temperature:" in query_data and "current_data" not in query_data and "historical_data" not in query_data:
             buttons = [
-                [InlineKeyboardButton(text='Current Data', callback_data=f'current_data:temperature:{passport_code}')],
-                [InlineKeyboardButton(text='Historical Data', callback_data=f'historical_data:temperature:{passport_code}')]
+                [InlineKeyboardButton(text='📊Current Data🌡️', callback_data=f'current_data:temperature:{passport_code}')],
+                [InlineKeyboardButton(text='📜Historical Data🌡️', callback_data=f'historical_data:temperature:{passport_code}')]
             ]
             keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
             self.bot.sendMessage(chat_ID, text='Choose the data type:', reply_markup=keyboard)
@@ -110,11 +111,11 @@ class HealthmonitorBot:
             for sensor in data[0]['Sensors']:
                 if sensor['Name'] == 'blood_pressure' and sensor['Values']:
                     current_value = sensor['Values'][-1]['value']
-                    self.bot.sendMessage(chat_ID, text=f"Current Blood Pressure: {current_value} mmHg")
+                    self.bot.sendMessage(chat_ID, text=f"Current Blood Pressure🩺: {current_value} mmHg")
                     return
 
         elif "historical_data:blood_pressure:" in query_data:
-            historical_data_message = "Blood Pressure Historical Data:\n"
+            historical_data_message = "Blood Pressure Historical Data🩺:\n"
             for sensor in data[0]['Sensors']:
                 if sensor['Name'] == 'blood_pressure':
                     for item in sensor['Values']:
@@ -127,11 +128,11 @@ class HealthmonitorBot:
             for sensor in data[0]['Sensors']:
                 if sensor['Name'] == 'body_temperature' and sensor['Values']:
                     current_value = sensor['Values'][-1]['value']
-                    self.bot.sendMessage(chat_ID, text=f"Current Body Temperature: {current_value}°C")
+                    self.bot.sendMessage(chat_ID, text=f"Current Body Temperature🌡️: {current_value}°C")
                     return
 
         elif "historical_data:temperature:" in query_data:
-            historical_data_message = "Temperature Historical Data:\n"
+            historical_data_message = "Temperature Historical Data🌡️:\n"
             for sensor in data[0]['Sensors']:
                 if sensor['Name'] == 'body_temperature':
                     for item in sensor['Values']:
@@ -149,4 +150,4 @@ if __name__ == "__main__":
     sb = HealthmonitorBot(token, broker, port, topic)
 
     while True:
-        time.sleep(3)
+        time.sleep(2)
