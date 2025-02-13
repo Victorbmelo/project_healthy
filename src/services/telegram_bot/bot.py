@@ -91,6 +91,14 @@ class HealthmonitorBot:
         print(f"Query Data: {query_data}")
         print(f"ThingSpeak Data: {data}")
 
+        def find_sensor_data(sensor_name):
+            """Helper function to find sensor data across multiple devices."""
+            for device in data:
+                for sensor in device['Sensors']:
+                    if sensor['Name'] == sensor_name:
+                        return sensor['Values']
+            return []
+
         if "blood_pressure:" in query_data and "current_data" not in query_data and "historical_data" not in query_data:
             buttons = [
                 [InlineKeyboardButton(text='📊Current Data🩺', callback_data=f'current_data:blood_pressure:{passport_code}')],
@@ -142,7 +150,18 @@ class HealthmonitorBot:
             return
 
 if __name__ == "__main__":
-    conf = json.load(open("D:/IOT_september_2024/git_project_healthy_main/project_healthy/src/services/telegram_bot/settings.json"))
+    
+    
+    import os
+
+    # Get the directory of the current script
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(BASE_DIR, "settings.json")
+
+    # Load JSON
+    conf = json.load(open(config_path))
+
+    #conf = json.load(open("D:/IOT_september_2024/project_healthy/src/services/telegram_bot/settings.json"))
     token = conf["telegramToken"]
     broker = conf["brokerIP"]
     port = conf["brokerPort"]
