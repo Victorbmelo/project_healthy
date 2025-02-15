@@ -108,14 +108,29 @@ class APIHandler:
         columns = ", ".join(fields)
         placeholders = ", ".join(["?"] * len(fields))
         query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
-        self.db.execute_query(query, tuple(data[field] for field in fields))
+        print(query, tuple(data[field] for field in fields))
+        try:
+            self.db.execute_query(query, tuple(data[field] for field in fields))
+        except sqlite3.OperationalError as e:
+            # Check if the error is due to a missing column (you can refine this further)
+            cherrypy.log(f"Error: {str(e)}")
+            # Return a Bad Request response with the error message
+            cherrypy.response.status = 400
+            return {"status": "error", "message": f"Bad Request: Column not found or query error({e})"}
         return STATUS_SUCCESS
 
     def handle_put_request(self, table_name, id, data, fields):
         pk = PRIMARY_KEYS.get(table_name, table_name[:-1] + "_id")
         set_clause = ", ".join([f"{field} = ?" for field in fields])
         query = f"UPDATE {table_name} SET {set_clause} WHERE {pk} = ?"
-        self.db.execute_query(query, tuple(data[field] for field in fields) + (id,))
+        try:
+            self.db.execute_query(query, tuple(data[field] for field in fields) + (id,))
+        except sqlite3.OperationalError as e:
+            # Check if the error is due to a missing column (you can refine this further)
+            cherrypy.log(f"Error: {str(e)}")
+            # Return a Bad Request response with the error message
+            cherrypy.response.status = 400
+            return {"status": "error", "message": f"Bad Request: Column not found or query error({e})"}
         return STATUS_SUCCESS
 
     def handle_delete_request(self, table_name, id):
@@ -130,8 +145,14 @@ class APIHandler:
     def patients(self, *uri, **params):
         method = cherrypy.request.method
         params = cherrypy.request.params
-        data = cherrypy.request.json if method in ['POST', 'PUT'] else None
         id = params.get('patient_id')
+        data = {}
+        if method in ['POST', 'PUT']:
+            if getattr(cherrypy.request, 'json'):
+                data = cherrypy.request.json
+            else:
+                cherrypy.response.status = 400
+                return STATUS_ERROR
 
         if method == 'GET':
             return self.handle_get_request("Patients", id, params)
@@ -151,8 +172,14 @@ class APIHandler:
     def devices(self, *uri, **params):
         method = cherrypy.request.method
         params = cherrypy.request.params
-        data = cherrypy.request.json if method in ['POST', 'PUT'] else None
         id = params.get('device_id')
+        data = {}
+        if method in ['POST', 'PUT']:
+            if getattr(cherrypy.request, 'json'):
+                data = cherrypy.request.json
+            else:
+                cherrypy.response.status = 400
+                return STATUS_ERROR
 
         if method == 'GET':
             return self.handle_get_request("Devices", id, params)
@@ -172,19 +199,26 @@ class APIHandler:
     def entities(self, *uri, **params):
         method = cherrypy.request.method
         params = cherrypy.request.params
-        data = cherrypy.request.json if method in ['POST', 'PUT'] else None
         id = params.get('entity_id')
-
+        data = {}
+        if method in ['POST', 'PUT']:
+            if getattr(cherrypy.request, 'json'):
+                data = cherrypy.request.json
+            else:
+                cherrypy.response.status = 400
+                return STATUS_ERROR
+        print(data)
         if method == 'GET':
             return self.handle_get_request("DeviceEntities", id, params)
         elif method == 'POST':
             required_fields = ["entity_type", "entity_name", "device_id"]
-            return self.handle_post_request("DeviceEntities", data, required_fields)
+            return self.handle_post_request("DeviceEntities", data, data.keys())
         elif method == 'PUT' and id:
             return self.handle_put_request("DeviceEntities", id, data, data.keys())
         elif method == 'DELETE' and id:
             return self.handle_delete_request("DeviceEntities", id)
 
+        cherrypy.response.status = 400
         return STATUS_ERROR
 
     @cherrypy.expose
@@ -193,14 +227,28 @@ class APIHandler:
     def telegrambot(self, *uri, **params):
         method = cherrypy.request.method
         params = cherrypy.request.params
-        data = cherrypy.request.json if method in ['POST', 'PUT'] else None
         bot_id = params.get('bot_id')
+        data = {}
+        if method in ['POST', 'PUT']:
+            if getattr(cherrypy.request, 'json'):
+                data = cherrypy.request.json
+            else:
+                cherrypy.response.status = 400
+                return STATUS_ERROR
 
         if method == 'GET':
             return self.handle_get_request("TelegramBot", bot_id, params)
         elif method == 'POST':
+            chat_id = data.get('chat_id')
+            patient_id = data.get('patient_id')
+
+            composite_params = {"chat_id": chat_id, "patient_id": patient_id}
+            telegram_data = self.handle_get_request("TelegramBot", bot_id, composite_params)
+
             required_fields = ['bot_token', 'chat_id', 'patient_id']
-            return self.handle_post_request("TelegramBot", data, required_fields)
+            if not telegram_data:
+                return self.handle_post_request("TelegramBot", data, required_fields)
+            return {"status": "data already exists"}
         elif method == 'PUT' and bot_id:
             return self.handle_put_request("TelegramBot", bot_id, data, data.keys())
         elif method == 'DELETE' and bot_id:
@@ -214,8 +262,14 @@ class APIHandler:
     def endpoints(self, *uri, **params):
         method = cherrypy.request.method
         params = cherrypy.request.params
-        data = cherrypy.request.json if method in ['POST', 'PUT'] else None
         endpoint_id = params.get('endpoint_id')
+        data = {}
+        if method in ['POST', 'PUT']:
+            if getattr(cherrypy.request, 'json'):
+                data = cherrypy.request.json
+            else:
+                cherrypy.response.status = 400
+                return STATUS_ERROR
 
         if method == 'GET':
             return self.handle_get_request("Endpoints", endpoint_id, params)
@@ -235,8 +289,14 @@ class APIHandler:
     def schedules(self, *uri, **params):
         method = cherrypy.request.method
         params = cherrypy.request.params
-        data = cherrypy.request.json if method in ['POST', 'PUT'] else None
         schedule_id = params.get('schedule_id')
+        data = {}
+        if method in ['POST', 'PUT']:
+            if getattr(cherrypy.request, 'json'):
+                data = cherrypy.request.json
+            else:
+                cherrypy.response.status = 400
+                return STATUS_ERROR
 
         if method == 'GET':
             return self.handle_get_request("Schedules", schedule_id, params)
@@ -281,8 +341,14 @@ class APIHandler:
     def admins(self, *uri, **params):
         method = cherrypy.request.method
         params = cherrypy.request.params
-        data = cherrypy.request.json if method in ['POST', 'PUT'] else None
         admin_id = params.get('admin_id')
+        data = {}
+        if method in ['POST', 'PUT']:
+            if getattr(cherrypy.request, 'json'):
+                data = cherrypy.request.json
+            else:
+                cherrypy.response.status = 400
+                return STATUS_ERROR
 
         if method == 'GET':
             return self.handle_get_request("Admins", admin_id, params)
@@ -302,8 +368,14 @@ class APIHandler:
     def services(self, *uri, **params):
         method = cherrypy.request.method
         params = cherrypy.request.params
-        data = cherrypy.request.json if method in ['POST', 'PUT'] else None
         service_id = params.get('service_id')
+        data = {}
+        if method in ['POST', 'PUT']:
+            if getattr(cherrypy.request, 'json'):
+                data = cherrypy.request.json
+            else:
+                cherrypy.response.status = 400
+                return STATUS_ERROR
 
         if method == 'GET':
             return self.handle_get_request("Services", service_id, params)
@@ -323,8 +395,14 @@ class APIHandler:
     def entityconfigurations(self, *uri, **params):
         method = cherrypy.request.method
         params = cherrypy.request.params
-        data = cherrypy.request.json if method in ['POST', 'PUT'] else None
         config_id = params.get('config_id')
+        data = {}
+        if method in ['POST', 'PUT']:
+            if getattr(cherrypy.request, 'json'):
+                data = cherrypy.request.json
+            else:
+                cherrypy.response.status = 400
+                return STATUS_ERROR
 
         if method == 'GET':
             return self.handle_get_request("EntityConfigurations", config_id, params)
@@ -345,8 +423,14 @@ class APIHandler:
     def configkeys(self, *uri, **params):
         method = cherrypy.request.method
         params = cherrypy.request.params
-        data = cherrypy.request.json if method in ['POST', 'PUT'] else None
         key = params.get('config_key')
+        data = {}
+        if method in ['POST', 'PUT']:
+            if getattr(cherrypy.request, 'json'):
+                data = cherrypy.request.json
+            else:
+                cherrypy.response.status = 400
+                return STATUS_ERROR
 
         if method == 'GET':
             return self.handle_get_request("ConfigKeys", key, params)
@@ -366,7 +450,12 @@ class APIHandler:
     @cherrypy.tools.json_in()
     def login(self, *uri, **params):
         if cherrypy.request.method == 'POST':
-            data = cherrypy.request.json
+            data = {}
+            if getattr(cherrypy.request, 'json'):
+                data = cherrypy.request.json
+            else:
+                cherrypy.response.status = 400
+                return STATUS_ERROR
             query = "SELECT * FROM Admins WHERE email = ? AND password = ?"
             result = self.db.query_data(query, (data['email'], data['password']))
             if result:

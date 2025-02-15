@@ -1,4 +1,3 @@
-import time
 import paho.mqtt.client as mqtt
 
 BROKER_URL = 'localhost'
