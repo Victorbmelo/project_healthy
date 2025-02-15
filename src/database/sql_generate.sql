@@ -93,7 +93,8 @@ CREATE TABLE IF NOT EXISTS TelegramBot (
   last_message TEXT,
   last_message_timestamp DATETIME,
   has_history_access BOOLEAN DEFAULT 0,
-  FOREIGN KEY (patient_id) REFERENCES Patients(patient_id)
+  FOREIGN KEY (patient_id) REFERENCES Patients(patient_id),
+  CONSTRAINT unique_chat_patient UNIQUE (chat_id, patient_id)
 );
 
 -- Schedules Table

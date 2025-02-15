@@ -309,64 +309,92 @@ paths:
           description: Endpoint deleted successfully
 
   /schedule:
-    get:
-      summary: Retrieve a list of schedules or a specific schedule by ID
-      parameters:
-        - name: schedule_id
-          in: query
-          schema:
-            type: integer
-          description: Schedule ID (optional)
-      responses:
-        '200':
-          description: List of schedules or a single schedule
+      get:
+        summary: Retrieve a list of schedules or a specific schedule by ID
+        parameters:
+          - name: schedule_id
+            in: query
+            schema:
+              type: integer
+            description: Schedule ID (optional)
+        responses:
+          '200':
+            description: List of schedules or a single schedule
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Schedule'
+      post:
+        summary: Create a new schedule
+        requestBody:
+          required: true
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Schedule'
-    post:
-      summary: Create a new schedule
-      requestBody:
-        required: true
-        content:
-          application/json:
+                type: object
+                properties:
+                  entity_id:
+                    type: integer
+                  day_of_week:
+                    type: array
+                    items:
+                      type: string
+                    enum: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday]
+                  start_time:
+                    type: string
+                  end_time:
+                    type: string
+                  action:
+                    type: string
+                    enum: [ON, OFF]
+                  repeat:
+                    type: boolean
+                required:
+                  - entity_id
+                  - day_of_week
+                  - start_time
+                  - action
+        responses:
+          '201':
+            description: Schedule created successfully
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Schedule'
+      put:
+        summary: Update an existing schedule
+        parameters:
+          - name: schedule_id
+            in: query
+            required: true
             schema:
-              $ref: '#/components/schemas/Schedule'
-      responses:
-        '201':
-          description: Schedule created successfully
-    put:
-      summary: Update an existing schedule
-      parameters:
-        - name: schedule_id
-          in: query
+              type: integer
+            description: Schedule ID
+        requestBody:
           required: true
-          schema:
-            type: integer
-          description: Schedule ID
-      requestBody:
-        required: true
-        content:
-          application/json:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Schedule'
+        responses:
+          '200':
+            description: Schedule updated successfully
+      delete:
+        summary: Delete a schedule by ID
+        parameters:
+          - name: schedule_id
+            in: query
+            required: true
             schema:
-              $ref: '#/components/schemas/Schedule'
-      responses:
-        '200':
-          description: Schedule updated successfully
-    delete:
-      summary: Delete a schedule by ID
-      parameters:
-        - name: schedule_id
-          in: query
-          required: true
-          schema:
-            type: integer
-          description: Schedule ID
-      responses:
-        '200':
-          description: Schedule deleted successfully
+              type: integer
+            description: Schedule ID
+        responses:
+          '200':
+            description: Schedule deleted successfully
 
   /entityconfig:
     get:
@@ -657,9 +685,9 @@ components:
       type: object
       properties:
         bot_token:
-          type: string
+          type: integer
         chat_id:
-          type: string
+          type: integer
         patient_id:
           type: integer
     Endpoint:
@@ -688,6 +716,11 @@ components:
           enum: [ON, OFF]
         repeat:
           type: boolean
+      required:
+        - entity_id
+        - day_of_week
+        - start_time
+        - action
     EntityConfiguration:
       type: object
       properties:
