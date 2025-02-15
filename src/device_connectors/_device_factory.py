@@ -76,7 +76,7 @@ class DeviceEntity(Entity):
         result = self.db_handler.query_data(query_get_topic)
         if result:
             patient_id, device_id, entity_id = result[0]
-            self.mqtt_topic = f"/{patient_id}/{self.service_name}/{device_id}/{entity_id}"
+            self.mqtt_topic = f"{patient_id}/{self.service_name}/{device_id}/{entity_id}"
             query_set_endpoint = f"""
                 INSERT INTO Endpoints (service_id, entity_id, endpoint)
                 VALUES (
