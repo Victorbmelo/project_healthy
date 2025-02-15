@@ -1,6 +1,7 @@
 {
   "telegramToken": "7543918154:AAHAM3AYjk9dIM2evdFsT0VXuS9nW-mzuYo",
-  "brokerIP": "mqtt.eclipseprojects.io",
+  "brokerIP2": "mqtt.eclipseprojects.io",
+  "brokerIP1": "localhost",
   "brokerPort": 1883,
   "mqttTopic":"rafafontana/exampleIoT/led"
 }
