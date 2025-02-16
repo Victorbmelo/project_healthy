@@ -75,6 +75,7 @@ class RFHealthPredictor:
         print("Best Parameters (RF - Severity Diagnosis):", best_params_severity)
 
         # Evaluate on test set using best parameters
+        ## accuracy_score compute the percentage of correctly predicted labels compared to the total number of samples in the test set.
         y_health_test_pred_rf = self.model_health.predict(X_test)
         test_health_accuracy_rf = accuracy_score(y_health_test, y_health_test_pred_rf)
 

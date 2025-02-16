@@ -13,8 +13,8 @@ dashboard_socket = 8082
 # Load trained models
 # Get the directory where the script is located
 script_dir = os.path.dirname(os.path.abspath(__file__))
-
-
+#######
+##Two algorthms are used to train the model, Random Forest and Support Vector Machnie (We can use either of them)
 ## Here we can decide the model created with Random forest algorithm to be used or SVM algorithm
 model_health_path = os.path.join(script_dir, "model_health_rf.pkl")  
 model_severity_path = os.path.join(script_dir, "model_severity_rf.pkl")
@@ -24,11 +24,11 @@ model_severity = joblib.load(model_severity_path)
 
 # Generate a single random heart rate (Fixed for this run)
 # By changing this heart rate the output of ML analysis will change
-fixed_heart_rate = np.random.randint(60, 90)  # Random heart rate between 60 and 100 bpm 
+fixed_heart_rate = np.random.randint(60, 90)  
 print(f"Simulated Heart Rate (Fixed for this run): {fixed_heart_rate}")
 
 def find_sensor_data(data, sensor_name):
-    #This is a Helper function to find sensor data across multiple devices.
+    #This is a function to find sensor data across multiple devices.
     ### Here we may have several devices and the BP or BT can be in any device ID
     sensor_values = []
     for device in data:
@@ -37,7 +37,7 @@ def find_sensor_data(data, sensor_name):
                 sensor_values.extend(sensor['Values'])
     return sensor_values if sensor_values else None
 
-## Extract the latest values from Thinkspeak JSON response
+# Extract the latest values from Thingspeak JSON response
 def extract_latest_values(data):
     body_temp_values = find_sensor_data(data, "body_temperature")
     systolic_bp_values = find_sensor_data(data, "blood_pressure")
@@ -45,10 +45,10 @@ def extract_latest_values(data):
     body_temp = float(body_temp_values[-1]['value']) if body_temp_values else None
     systolic_bp = float(systolic_bp_values[-1]['value']) if systolic_bp_values else None
 
-    print(f"Extracted from ThingSpeak: BP={systolic_bp}, Temp={body_temp}")
+    print(f"Extracted from ThinkSpeak: BP={systolic_bp}, Temp={body_temp}")
     return body_temp, systolic_bp
 
-# Get latest blood pressure and body temperature from ThinkSpeak
+#Get latest blood pressure and body temperature from ThingSpeak
 def get_thingspeak_data(passport_code):
     url = f"{thingspeak_URL}/thingspeak?passport_code={passport_code}"
     try:
@@ -63,18 +63,18 @@ def get_thingspeak_data(passport_code):
         print(f"Error: Failed to connect to ThingSpeak - {e}")
         return None, None
 
-# Predict health status and severity
+#predict health status and severity
 def predict_health_status_and_severity(body_temp, systolic_bp):
     
     # Prepare the input data
     input_data = np.array([[fixed_heart_rate, body_temp, systolic_bp]])
 
     try:
-        # Predict health status
+        #predict health status
         health_prediction = model_health.predict(input_data)[0]
         health_status = "Healthy" if health_prediction == 0 else "Unhealthy"
 
-        # Predict severity if unhealthy
+        #predict severity if unhealthy
         severity_status = "healthy"
         if health_status == "Unhealthy":
             severity_prediction = model_severity.predict(input_data)[0]
@@ -93,7 +93,7 @@ def predict_health_status_and_severity(body_temp, systolic_bp):
     except Exception as e:
         print(f"Prediction Error: {e}")
         return {"error": "Prediction failed"}
-
+############################################################
 # CherryPy server to connect with the dashboard
 class DashboardConnection:
     exposed = True
@@ -128,7 +128,7 @@ if __name__ == "__main__":
         }
     }
 
-    cherrypy.tree.mount(DashboardConnection(), '/', conf)  ## same as the name of the class name
+    cherrypy.tree.mount(DashboardConnection(), '/', conf)  
     cherrypy.config.update({'server.socket_host': '0.0.0.0'})
     cherrypy.config.update({'server.socket_port': dashboard_socket})
     cherrypy.engine.start()

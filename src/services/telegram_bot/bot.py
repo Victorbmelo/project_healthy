@@ -12,7 +12,7 @@ import os
 
 ###### The URLs in the code to be able to change easily for dockerisation
 thinkspeak_URL = "http://localhost:8081"
-db_connector_URL = "http://192.168.76.51:8080"
+db_connector_URL = "http://localhost:8080"
 
 class dbHandler:
     exposed = True
@@ -103,8 +103,8 @@ class HealthmonitorBot:
             topic = msg.topic
             msg = msg.payload.decode()  # Decode MQTT message
             print(f"🔔 Received Alert: {msg} on topic {topic}")
-            ### Extract patient ID from topic format 'patientID/alert'
-            patient_id = topic.split("/alert")[0]  # Extract patient ID from topic
+            ### Extract patient ID from topic format 'patient ID/alert'
+            patient_id = topic.split("/alert")[0]  
             # Retrieve chat ID from the database
             chat_IDs = dbHandler.GetChatID(patient_id)
             for chat_ID in chat_IDs:
@@ -207,7 +207,7 @@ class HealthmonitorBot:
             else:
                 self.bot.sendMessage(chat_ID, text="⚠️ No historical blood pressure data found.")
 
-                # current body temperature
+            #current body temperature
         elif "current_data:temperature:" in query_data:
             values = find_sensor_data('body_temperature')
             if values:
