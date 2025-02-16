@@ -8,13 +8,14 @@ from src.database.sqlite_handler import DatabaseHandler
 from src.services.air_conditioning.air_conditioning_service import AirConditioningService
 from src.services.blood_pressure.blood_pressure_service import BloodPressureService
 from src.services.body_temperature.body_temperature_service import BodyTemperatureService
+from src.services.schedules.schedule_service import SchedulerService
 from src.services.thingspeak.thingspeak_adapter import ThingSpeakAdapter
 
 from src.device_connectors._device_factory import Device, DeviceEntity
-from src.device_connectors.temperature_humidity_sensor import TemperatureHumiditySensor
+from src.device_connectors.humidity_sensor import HumiditySensor
 from src.device_connectors.body_temp_sensor import BodyTemperatureSensor
 from src.device_connectors.blood_pressure_sensor import BloodPressureSensor
-from src.device_connectors.button_actuator import ActionButton
+from src.device_connectors.lamp_actuator import LampActuator
 
 
 class ServiceManager:
@@ -41,7 +42,7 @@ class ServiceManager:
 def simulate_sensors_data(entity: DeviceEntity):
     print(f"Starting Sensor Simulation for {entity.name}.")
     while True:
-        time_to_sleep = random.randint(10, 20)
+        time_to_sleep = random.randint(20, 30)
         entity.send_data(entity.read_data())
         time.sleep(time_to_sleep)
 
@@ -65,7 +66,7 @@ def main():
     # ---------- Init sensors
     body_temp_sensor = BodyTemperatureSensor(name='Temperature Sensor', device_mac=device_mac1, db_handler=db_handler, mqtt_handler=mqtt_handler)
     body_temp_sensor.set_mqtt_topic(passport_code=patient_passport1)
-    temp_humidity_sensor = TemperatureHumiditySensor(name='Humidity Sensor', device_mac=device_mac1, db_handler=db_handler, mqtt_handler=mqtt_handler)
+    temp_humidity_sensor = HumiditySensor(name='Humidity Sensor', device_mac=device_mac1, db_handler=db_handler, mqtt_handler=mqtt_handler)
     temp_humidity_sensor.set_mqtt_topic(passport_code=patient_passport1)
     blood_pressure_sensor2 = BloodPressureSensor(name='Blood Pressure2', device_mac=device_mac1, db_handler=db_handler, mqtt_handler=mqtt_handler)
     blood_pressure_sensor2.set_mqtt_topic(passport_code=patient_passport1)
@@ -87,30 +88,35 @@ def main():
     air_temp_sensor = BodyTemperatureSensor(name='Temperature Sensor2', device_mac=device_mac3, db_handler=db_handler, mqtt_handler=mqtt_handler)
     air_temp_sensor.set_mqtt_topic(passport_code=patient_passport2)
     # ---------- Init actuators
-    # action_button = ActionButton(device_mac=device_mac3, db_handler=db_handler, mqtt_handler=mqtt_handler)
-    # action_button.set_mqtt_topic(passport_code=user_passport2)
+    action_button = LampActuator(name='Bedroom Lamp', device_mac=device_mac3, db_handler=db_handler, mqtt_handler=mqtt_handler)
+    action_button.set_mqtt_topic(passport_code=patient_passport2)
+    action_button.receive_data()
 
 
     # ================================================  Init ServiceManager
         # simulate readings and actions
-    # t = threading.Thread(target=simulate_sensors_data, args=[body_temp_sensor])
-    # t.daemon = True
-    # t.start()
-    # t2 = threading.Thread(target=simulate_sensors_data, args=[temp_humidity_sensor])
-    # t2.daemon = True
-    # t2.start()
-    # t3 = threading.Thread(target=simulate_sensors_data, args=[blood_pressure_sensor2])
-    # t3.daemon = True
-    # t3.start()
-    # t4 = threading.Thread(target=simulate_sensors_data, args=[air_temp_sensor])
-    # t4.daemon = True
-    # t4.start()
-    # threading.Thread(target=simulate_sensors_data, args=[action_button]).start()
+    t = threading.Thread(target=simulate_sensors_data, args=[body_temp_sensor])
+    t.daemon = True
+    t.start()
+    t2 = threading.Thread(target=simulate_sensors_data, args=[temp_humidity_sensor])
+    t2.daemon = True
+    t2.start()
+    t3 = threading.Thread(target=simulate_sensors_data, args=[blood_pressure_sensor2])
+    t3.daemon = True
+    t3.start()
+    t4 = threading.Thread(target=simulate_sensors_data, args=[air_temp_sensor])
+    t4.daemon = True
+    t4.start()
+    service = SchedulerService('http://localhost:8080', 'localhost')
+    t5 = threading.Thread(target=service.start_scheduler, args=[])
+    t5.daemon = True
+    t5.start()
 
     service_manager = ServiceManager()
-    # service_manager.start_service('air_conditioning')
-    # service_manager.start_service('blood_pressure')
-    # service_manager.start_service('body_temperature')
+    service_manager.start_service('air_conditioning')
+    service_manager.start_service('blood_pressure')
+    service_manager.start_service('body_temperature')
+    service_manager.start_service('scheduler')
     service_manager.start_service('thingspeak')
 
 
