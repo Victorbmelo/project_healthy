@@ -1,9 +1,10 @@
 import datetime
 import json
+import os
 import requests
 from src.mqtt.mqtt_handler import MqttHandler
 
-API_BASE_URL = 'http://localhost:8080'
+DB_CONNECTOR_URL = os.getenv("DB_CONNECTOR_URL", "http://localhost:8080")
 
 
 class AirConditioningService:
@@ -31,7 +32,7 @@ class AirConditioningService:
             'last_reading': str(humidity),
             'last_reading_timestamp': timestamp_now
         }
-        r = requests.put(f"{API_BASE_URL}/entity?entity_id={entity_id}", json=request_payload)
+        r = requests.put(f"{DB_CONNECTOR_URL}/entity?entity_id={entity_id}", json=request_payload)
         print(f"[AirConditioningService] PUT Request entity_id: {entity_id}, response: {r}")
 
         data = {

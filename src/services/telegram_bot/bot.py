@@ -11,15 +11,16 @@ import numpy as np
 import os
 
 ###### The URLs in the code to be able to change easily for dockerisation
-thinkspeak_URL = "http://localhost:8081"
-db_connector_URL = "http://localhost:8080"
+DB_CONNECTOR_URL = os.getenv("DB_CONNECTOR_URL", "http://localhost:8080")
+THINGSPEAK_ADAPTER_URL = os.getenv('THINGSPEAK_ADAPTER_URL', 'http://localhost:8081')
+
 
 class dbHandler:
     exposed = True
     ### Send passport code to dB connector
     @staticmethod
     def GetRequest(passport_code):
-        url = f"{db_connector_URL}/patient?passport_code={passport_code}"
+        url = f"{DB_CONNECTOR_URL}/patient?passport_code={passport_code}"
         try:
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
@@ -36,7 +37,7 @@ class dbHandler:
     ######This part is used to save chat_ID in the database using /telegrambot API  
     @staticmethod
     def SaveChatID(bot_token, chat_ID, patient_id):
-        url = f"{db_connector_URL}/telegrambot"
+        url = f"{DB_CONNECTOR_URL}/telegrambot"
         payload = {
             "bot_token": bot_token,
             "chat_id": str(chat_ID),
@@ -55,7 +56,7 @@ class dbHandler:
     ###Retrieve chat_ID from the database for a given patient ID   
     @staticmethod
     def GetChatID(patient_id):
-        url = f"{db_connector_URL}/telegrambot?patient_id={patient_id}"
+        url = f"{DB_CONNECTOR_URL}/telegrambot?patient_id={patient_id}"
         try:
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
@@ -71,7 +72,7 @@ class dbHandler:
 class ThingSpeakHandler:
     @staticmethod
     def get_data(passport_code):
-        url = f"{thinkspeak_URL}/thingspeak?passport_code={passport_code}"
+        url = f"{THINGSPEAK_ADAPTER_URL}/thingspeak?passport_code={passport_code}"
         try:
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
