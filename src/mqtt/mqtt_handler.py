@@ -38,11 +38,15 @@ class MqttHandler:
             self._client.tls_set(tls['ca_certs'], tls['certfile'], tls['keyfile'])
 
         # Attach callbacks
-        self._client.on_connect = self.on_connect
-        self._client.on_disconnect = self.on_disconnect
+        # self._client.on_connect = self.on_connect
+        # self._client.on_disconnect = self.on_disconnect
         self._client.on_message = self.on_message
         self._client.on_subscribe = self.on_subscribe
         self._client.on_publish = self.on_publish
+
+    @property
+    def client(self):
+        return self._client
 
     def set_on_message_callback(self, function):
         self._client.on_message = function
