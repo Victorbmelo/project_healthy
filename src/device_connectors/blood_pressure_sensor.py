@@ -14,14 +14,11 @@ class BloodPressureSensor(DeviceEntity):
         Simulate blood pressure in mmHg.
         """
         systolic = random.randint(90, 180)
-        diastolic = random.randint(60, 90)
-        blood_pressure = f"{systolic}/{diastolic}"
-        print(f"Blood Pressure Sensor - Data read: {blood_pressure} mmHg")
+        print(f"[BloodPressureSensor] Blood Pressure Sensor - Data read: {systolic} mmHg")
         return systolic
 
     def send_data(self, blood_press):
         if self.mqtt_topic:
-            data = {'blood_pressure': blood_press}
             self.mqtt_handler.publish(self.mqtt_topic, blood_press)
         else:
-            print("MQTT topic not set. Data not sent.")
+            print("[BloodPressureSensor] MQTT topic not set. Data not sent.")
