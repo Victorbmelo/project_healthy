@@ -85,7 +85,7 @@ class SVMHealthPredictor:
         print("Test Accuracy (SVM - Severity Diagnosis using Best Parameters):", test_severity_accuracy_svm)
 
         # Save models in the same directory as the training file
-        ###These models will be used later in the main code
+        #These models will be used later in the main code
         model_dir = os.path.dirname(self.training_file)
         health_model_path = os.path.join(model_dir, "model_health_svm.pkl")
         severity_model_path = os.path.join(model_dir, "model_severity_svm.pkl")
@@ -107,7 +107,7 @@ class SVMHealthPredictor:
         plt.show()
 
 
-
+#Use this dataset to train model 
 training_file = "D:/IOT_september_2024/project_healthy/src/ML/disease_diagnosis.csv"
 predictor = SVMHealthPredictor(training_file)
 predictor.preprocess_training_data()
