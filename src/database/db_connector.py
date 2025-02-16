@@ -54,12 +54,17 @@ class DatabaseHandler:
         self.execute_script(self.schema_file)
 
     def query_data(self, query, params=()):
-        self.cursor.execute(query, params)
-        return self.cursor.fetchall()
+        cur = self.conn.cursor()  # Create a new cursor due to concurrence
+        cur.execute(query, params)
+        results = cur.fetchall()
+        cur.close()  # Close the cursor when done
+        return results
 
     def execute_query(self, query, params=()):
-        self.cursor.execute(query, params)
+        cur = self.conn.cursor()
+        cur.execute(query, params)
         self.conn.commit()
+        cur.close()
 
     def insert_data(self, table_name, **kwargs):
         columns = ', '.join(kwargs.keys())
@@ -214,7 +219,6 @@ class APIHandler:
                 cherrypy.response.status = 400
                 return STATUS_ERROR
 
-        print(data)
         if method == 'GET':
             return self.handle_get_request("DeviceEntities", id, params)
         elif method == 'POST':
