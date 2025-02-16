@@ -1,13 +1,16 @@
 import cherrypy
 import requests
 import threading
-from src.database.sqlite_handler import DatabaseHandler
 from src.mqtt.mqtt_handler import MqttHandler
 
-# Update the URL to not include the API key in the string.
+# External Thingspeak constants
 THINGSPEAK_API_READ_URL = "https://api.thingspeak.com/channels/{channel_id}/feeds.json"
 THINGSPEAK_MQTT_URL = 'mqtt3.thingspeak.com'
 THINGSPEAK_MQTT_PORT = 1883
+
+# Define the base URL for your API endpoints (update as needed)
+API_BASE_URL = "http://localhost:8080"
+
 
 class ThingSpeakAdapter:
     def __init__(self):
@@ -23,11 +26,6 @@ class ThingSpeakAdapter:
         )
         self._thingspeak_mqtt.connect()
         self.start()
-
-    def get_db_connection(self):
-        db = DatabaseHandler(client_id='ThingSpeakAdapter')
-        db.connect()
-        return db
 
     @cherrypy.expose
     def index(self):
@@ -51,113 +49,120 @@ class ThingSpeakAdapter:
             - end: (Optional) End date in format YYYY-MM-DD%20HH:NN:SS. (datetime)
             - timezone: (Optional) Identifier from Time Zones Reference for this request. (string)
         """
-        try:
-            db = self.get_db_connection()
+        # Prepare Thingspeak filter parameters
+        filter_params = {}
+        if results is not None:
+            filter_params["results"] = results
+        if days is not None:
+            filter_params["days"] = days
+        if minutes is not None:
+            filter_params["minutes"] = minutes
+        if start is not None:
+            filter_params["start"] = start
+        if end is not None:
+            filter_params["end"] = end
+        if timezone is not None:
+            filter_params["timezone"] = timezone
 
-            # Prepare filter parameters for the ThingSpeak API request
-            filter_params = {}
-            if results is not None:
-                filter_params["results"] = results
-            if days is not None:
-                filter_params["days"] = days
-            if minutes is not None:
-                filter_params["minutes"] = minutes
-            if start is not None:
-                filter_params["start"] = start
-            if end is not None:
-                filter_params["end"] = end
-            if timezone is not None:
-                filter_params["timezone"] = timezone
-
-            # If device_id or mac_address is provided: fetch a single channel
-            if device_id is not None or mac_address is not None:
-                channels = self.get_thingspeak_channel_info(db, patient_id, passport_code, device_id, mac_address)
-                if not channels:
-                    return {"error": "Channel info not found for device"}
-                channel_key, channel_id, dev_id = channels[0]
-                if not channel_id:
-                    return {"error": "Channel ID not found for device"}
-
-                # Build the URL and add the api_key and filter parameters.
-                url = THINGSPEAK_API_READ_URL.format(channel_id=channel_id)
-                params = {"api_key": channel_key}
-                params.update(filter_params)
-                ts_response = requests.get(url, params=params)
-                ts_response.raise_for_status()
-                ts_json = ts_response.json()
-                return [self.transform_thingspeak_data(ts_json, dev_id)]
-            else:
-                # If only patient_id or passport_code is provided: fetch all channels for the patient
-                channels = self.get_thingspeak_channel_info(db, patient_id, passport_code)
-                if not channels:
-                    return {"error": "No channels found for the patient"}
-                data = []
-                for channel_key, channel_id, dev_id in channels:
-                    if not channel_id:
-                        continue
-                    try:
-                        url = THINGSPEAK_API_READ_URL.format(channel_id=channel_id)
-                        params = {"api_key": channel_key}
-                        params.update(filter_params)
-                        ts_response = requests.get(url, params=params)
-                        ts_response.raise_for_status()
-                        ts_json = ts_response.json()
-                        device_data = self.transform_thingspeak_data(ts_json, dev_id)
-                        data.append(device_data)
-                    except Exception as e:
-                        data.append({"Device_id": dev_id, "error": str(e)})
-                return data
-
-        except requests.RequestException as e:
-            return {"error": f"Failed to fetch data: {e}"}
-        except Exception as e:
-            return {"error": f"An error occurred: {e}"}
-
-    def get_thingspeak_channel_info(self, db, patient_id=None, passport_code=None, device_id=None, mac_address=None):
-        """
-        Returns a list of channel information:
-        Each record contains: (thingspeak_channel_key, thingspeak_channel_id, device_id)
-        Filtering is performed using patient_id/passport_code and/or device_id/mac_address.
-        """
-        query = """
-            SELECT D.thingspeak_channel_key, D.thingspeak_channel_id, D.device_id
-            FROM Devices D
-            LEFT JOIN Patients P ON P.patient_id = D.patient_id
-            WHERE
-        """
-        conditions = []
-        params = []
-
-        if patient_id is not None or passport_code is not None:
-            conditions.append("(P.passport_code = ? OR P.patient_id = ?)")
-            params.extend([passport_code, patient_id])
+        # If device_id or mac_address is provided, fetch a single channel
         if device_id is not None or mac_address is not None:
-            conditions.append("(D.device_id = ? OR D.mac_address = ?)")
-            params.extend([device_id, mac_address])
-        if conditions:
-            query += " AND ".join(conditions)
-        else:
-            query = query.strip().rstrip("WHERE")
+            channels = self.get_thingspeak_channel_info(
+                patient_id=patient_id,
+                passport_code=passport_code,
+                device_id=device_id,
+                mac_address=mac_address
+            )
+            if not channels:
+                return {"error": "Channel info not found for device"}
+            channel_key, channel_id, dev_id = channels[0]
+            if not channel_id:
+                return {"error": "Channel ID not found for device"}
 
-        cherrypy.log("[THINGSPEAK] Query: {} with params: {}".format(query, params))
-        result = db.query_data(query, params)
-        cherrypy.log("[THINGSPEAK] Query result: {}".format(result))
-        return result if result else []
+            # Build Thingspeak API URL and parameters
+            url = THINGSPEAK_API_READ_URL.format(channel_id=channel_id)
+            params = {"api_key": channel_key}
+            params.update(filter_params)
+            ts_response = requests.get(url, params=params)
+            ts_response.raise_for_status()
+            ts_json = ts_response.json()
+            return [self.transform_thingspeak_data(ts_json, dev_id)]
+        else:
+            # If only patient_id or passport_code is provided: fetch all channels for the patient
+            channels = self.get_thingspeak_channel_info(
+                patient_id=patient_id,
+                passport_code=passport_code
+            )
+            if not channels:
+                return {"error": "No channels found for the patient"}
+            data = []
+            for channel_key, channel_id, dev_id in channels:
+                if not channel_id:
+                    continue
+                try:
+                    url = THINGSPEAK_API_READ_URL.format(channel_id=channel_id)
+                    params = {"api_key": channel_key}
+                    params.update(filter_params)
+                    ts_response = requests.get(url, params=params)
+                    ts_response.raise_for_status()
+                    ts_json = ts_response.json()
+                    device_data = self.transform_thingspeak_data(ts_json, dev_id)
+                    data.append(device_data)
+                except Exception as e:
+                    data.append({"Device_id": dev_id, "error": str(e)})
+            return data
+
+    def get_thingspeak_channel_info(self, patient_id=None, passport_code=None, device_id=None, mac_address=None):
+        """
+        Returns a list of channel information by calling the API endpoints.
+        Each record contains: (thingspeak_channel_key, thingspeak_channel_id, device_id)
+        """
+        # If patient_id is not provided but passport_code is, get patient info first
+        if patient_id is None and passport_code is not None:
+            url = f"{API_BASE_URL}/patient"
+            params = {"passport_code": passport_code}
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            patient_data = response.json()
+            if not patient_data:
+                return []
+            patient_id = patient_data[0].get("patient_id")
+
+        # Query devices endpoint with the provided filters
+        url = f"{API_BASE_URL}/device"
+        params = {}
+        if patient_id is not None:
+            params["patient_id"] = patient_id
+        if device_id is not None:
+            params["device_id"] = device_id
+        if mac_address is not None:
+            params["mac_address"] = mac_address
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        devices = response.json()
+
+        channels = []
+        for dev in devices:
+            channel_key = dev.get("thingspeak_channel_key")
+            channel_id = dev.get("thingspeak_channel_id")
+            dev_id = dev.get("device_id")
+            if channel_key and channel_id:
+                channels.append((channel_key, channel_id, dev_id))
+        return channels
 
     def get_entity_names_for_device(self, device_id):
         """
         Retrieves a mapping from Thingspeak field keys to entity names for sensor entities of the given device.
-        Only sensor entities (entity_type='sensor') are considered.
+        Uses the API endpoint to get the entities.
         """
-        db = self.get_db_connection()
-        query = """
-            SELECT thingspeak_field_id, entity_name
-            FROM DeviceEntities
-            WHERE device_id = ? AND entity_type = 'sensor'
-        """
-        rows = db.query_data(query, (device_id,))
+        url = f"{API_BASE_URL}/entity"
+        params = {"device_id": device_id, "entity_type": "sensor"}
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        rows = response.json()
         mapping = {}
-        for thingspeak_field_id, entity_name in rows:
+        for row in rows:
+            thingspeak_field_id = row.get("thingspeak_field_id")
+            entity_name = row.get("entity_name")
             if thingspeak_field_id is not None and entity_name:
                 key = f"field{thingspeak_field_id}"
                 mapping[key] = entity_name
@@ -165,8 +170,8 @@ class ThingSpeakAdapter:
 
     def transform_thingspeak_data(self, ts_json, device_id, use_db_entity_name=False):
         """
-        Transforms the Thingspeak JSON into an intelligent format, grouping data from each sensor.
-        If use_db_entity_name, the sensor name is overridden by the entity_name stored in the database if available.
+        Transforms the Thingspeak JSON into a grouped sensor data format.
+        Optionally uses the entity names from the API if use_db_entity_name is True.
 
         Returns a dictionary in the format:
         {
@@ -184,21 +189,14 @@ class ThingSpeakAdapter:
         }
         """
         channel = ts_json.get("channel", {})
-        feeds = ts_json.get("feeds", [])
+        feeds = ts_json.get("feeds", {})
 
-        # Build the sensor mapping:
-        # If use_db_entity_name
-        # Use the database entity_name if available; otherwise, use the channel metadata.
-        # else
-        # Map each field (field1, field2, ...) to the sensor name provided in the channel data
         sensors = {}
         if use_db_entity_name:
-            # Get entity names mapping from the database
+            # Get entity names mapping from the API
             db_entity_names = self.get_entity_names_for_device(device_id)
-
             for key, channel_value in channel.items():
                 if key.startswith("field"):
-                    # If a database entry exists for this field, use it. Otherwise, fallback to the channel metadata.
                     sensor_name = db_entity_names.get(key, channel_value)
                     if sensor_name:
                         sensors[key] = sensor_name
@@ -210,7 +208,7 @@ class ThingSpeakAdapter:
         # Initialize the structure for each sensor
         sensor_data = {sensor_name: [] for sensor_name in sensors.values()}
 
-        # Iterate over feeds and group values for each sensor
+        # Group feed values by sensor
         for feed in feeds:
             created_at = feed.get("created_at")
             for field_key, sensor_name in sensors.items():
@@ -221,58 +219,50 @@ class ThingSpeakAdapter:
                         "value": value
                     })
 
-        # Prepare the sensor list for the return JSON
         sensors_list = [{"Name": name, "Values": values} for name, values in sensor_data.items()]
-
         return {"Device_id": device_id, "Sensors": sensors_list}
 
-    def get_thingspeak_field_id(self, db, entity_id, device_id):
+    def get_thingspeak_field_id(self, entity_id, device_id):
         """
-        Retrieves or assigns a ThingSpeak field ID for an entity associated with a device.
-
+        Retrieves or assigns a ThingSpeak field ID for an entity via API calls.
         If the entity already has a `thingspeak_field_id`, it is returned.
-        Otherwise, the function finds the next available field ID for the device and assigns it to the entity.
+        Otherwise, the next available field ID is determined and updated.
         """
         # Check if the entity already has an assigned field ID
-        query = """
-            SELECT thingspeak_field_id
-            FROM DeviceEntities
-            WHERE entity_id = ?
-            AND thingspeak_field_id <> '';
-        """
-        result = db.query_data(query, (entity_id,))
+        url = f"{API_BASE_URL}/entity"
+        params = {"entity_id": entity_id}
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        records = response.json()
+        if records:
+            record = records[0]
+            if record.get("thingspeak_field_id"):
+                cherrypy.log("[THINGSPEAK] Entity {} already has a ThingSpeak field ID: {}".format(
+                    entity_id, record.get("thingspeak_field_id")))
+                return record.get("thingspeak_field_id")
 
-        if result and result[0][0] is not None:
-            cherrypy.log("[THINGSPEAK] Entity {} already has a ThingSpeak field ID: {}".format(entity_id, result[0][0]))
-            cherrypy.log("[THINGSPEAK] Query: {}".format(query))
-            return result[0][0]
-
-        # Retrieve assigned field IDs for the device
-        fields_query = """
-            SELECT thingspeak_field_id
-            FROM DeviceEntities
-            WHERE device_id = ?;
-        """
-        result = db.query_data(fields_query, (device_id,))
-
-        if result:
-            assigned_fields = [row[0] for row in result if row[0] is not None]
-            field_id = max(assigned_fields) + 1 if assigned_fields else 1
-            cherrypy.log("[THINGSPEAK] Found assigned field IDs for device {}: {}".format(device_id, assigned_fields))
-            cherrypy.log("[THINGSPEAK] Assigning new ThingSpeak field ID: {}".format(field_id))
+        # Retrieve all entities for the device to find assigned field IDs
+        url = f"{API_BASE_URL}/entity"
+        params = {"device_id": device_id}
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        records = response.json()
+        assigned_fields = []
+        for rec in records:
+            t_field = rec.get("thingspeak_field_id")
+            if t_field not in (None, ""):
+                assigned_fields.append(int(t_field))
+        if assigned_fields:
+            field_id = max(assigned_fields) + 1
         else:
             field_id = 1
-            cherrypy.log("[THINGSPEAK] No ThingSpeak field IDs found for device {}. Starting from {}.".format(device_id, field_id))
+        cherrypy.log("[THINGSPEAK] Assigning new ThingSpeak field ID: {}".format(field_id))
 
-        # Assign the new field ID to the entity
-        update_query = """
-            UPDATE DeviceEntities
-            SET thingspeak_field_id = ?
-            WHERE entity_id = ?;
-        """
-        db.execute_query(update_query, (field_id, entity_id))
-        cherrypy.log("[THINGSPEAK] Successfully assigned ThingSpeak field ID {} to entity {}.".format(field_id, entity_id))
-
+        # Update the entity with the new field ID via PUT
+        url = f"{API_BASE_URL}/entity?entity_id={entity_id}"
+        payload = {"thingspeak_field_id": field_id}
+        response = requests.put(url, json=payload)
+        response.raise_for_status()
         return field_id
 
     def send_data_to_thingspeak_mqtt(self, channel_key, field_id, message):
@@ -280,20 +270,25 @@ class ThingSpeakAdapter:
         self._thingspeak_mqtt.publish(mqtt_topic, payload=str(message), qos=0)
 
     def on_message(self, client, userdata, message):
+        """
+        Callback for local MQTT messages.
+        Extracts patient, device, and entity info from the topic and uses APIs to:
+            1. Get (or assign) the field ID.
+            2. Fetch the Thingspeak channel info.
+            3. Publish the data to Thingspeak via MQTT.
+        """
         payload = message.payload.decode('utf-8')
         topic = message.topic
         try:
-            db = self.get_db_connection()
             patient_id, service_name, device_id, entity_id = topic.lstrip('/').split('/')
-
-            field_id = self.get_thingspeak_field_id(db, entity_id=entity_id, device_id=device_id)
-            channels = self.get_thingspeak_channel_info(db, patient_id=patient_id, device_id=device_id)
-            channel_key, channel_id, _ = channels[0]
-
-            if channel_key and field_id:
-                self.send_data_to_thingspeak_mqtt(channel_id, field_id, payload)
+            field_id = self.get_thingspeak_field_id(entity_id, device_id)
+            channels = self.get_thingspeak_channel_info(patient_id=patient_id, device_id=device_id)
+            if channels:
+                channel_key, channel_id, _ = channels[0]
+                if channel_key and field_id:
+                    self.send_data_to_thingspeak_mqtt(channel_id, field_id, payload)
         except Exception as e:
-            cherrypy.log("ERROR: [THINGSPEAK] Error on_message: {}".format(e))
+            cherrypy.log("[THINGSPEAK] Error on_message: {}".format(e))
 
     def start(self):
         self._local_mqtt.connect()
@@ -305,6 +300,7 @@ class ThingSpeakAdapter:
 
     def _listen_to_entities(self):
         self._local_mqtt.subscribe("+/+/+/+")
+
 
 if __name__ == "__main__":
     cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8081})
