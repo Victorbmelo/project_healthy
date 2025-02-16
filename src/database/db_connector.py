@@ -2,10 +2,12 @@ import cherrypy
 import os
 import sqlite3
 
+URL_PORT = os.getenv('URL_PORT', 8080)
+DB_FILENAME = os.getenv('DB_FILENAME', 'ProjectHealth.db')
+SCHEMA_FILENAME = os.getenv('SCHEMA_FILENAME', 'sql_generate.sql')
+
 SCRIPT_PATH = os.path.abspath(__file__)
 SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
-DB_FILENAME = 'ProjectHealth.db'
-SCHEMA_FILENAME = 'sql_generate.sql'
 
 DB_PATH = os.path.join(SCRIPT_DIR, DB_FILENAME)
 SCHEMA_PATH = os.path.join(SCRIPT_DIR, SCHEMA_FILENAME)

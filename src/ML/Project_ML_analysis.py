@@ -7,8 +7,8 @@ import cherrypy
 import json
 import os
 ###### The URLs in the code to be able to change easily
-thingspeak_URL = "http://localhost:8081"
-dashboard_socket = 8082
+THINGSPEAK_ADAPTER_URL = os.getenv('THINGSPEAK_ADAPTER_URL', 'http://localhost:8081')
+ML_PORT = os.getenv('ML_PORT', 8082)
 
 # Load trained models
 # Get the directory where the script is located
@@ -49,7 +49,7 @@ def extract_latest_values(data):
 
 #Get latest blood pressure and body temperature from ThingSpeak
 def get_thingspeak_data(passport_code):
-    url = f"{thingspeak_URL}/thingspeak?passport_code={passport_code}"
+    url = f"{THINGSPEAK_ADAPTER_URL}/thingspeak?passport_code={passport_code}"
     try:
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
@@ -129,6 +129,6 @@ if __name__ == "__main__":
 
     cherrypy.tree.mount(DashboardConnection(), '/', conf)  
     cherrypy.config.update({'server.socket_host': '0.0.0.0'})
-    cherrypy.config.update({'server.socket_port': dashboard_socket})
+    cherrypy.config.update({'server.socket_port': ML_PORT})
     cherrypy.engine.start()
     cherrypy.engine.block()

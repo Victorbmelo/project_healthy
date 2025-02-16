@@ -1,16 +1,16 @@
+import os
 import cherrypy
 import requests
 import threading
 from src.mqtt.mqtt_handler import MqttHandler
 
 # External Thingspeak constants
-THINGSPEAK_API_READ_URL = "https://api.thingspeak.com/channels/{channel_id}/feeds.json"
-THINGSPEAK_MQTT_URL = 'mqtt3.thingspeak.com'
-THINGSPEAK_MQTT_PORT = 1883
+THINGSPEAK_API_READ_URL = os.getenv('THINGSPEAK_API_READ_URL', 'https://api.thingspeak.com/channels/{channel_id}/feeds.json')
+THINGSPEAK_MQTT_URL = os.getenv('THINGSPEAK_MQTT_URL', 'mqtt3.thingspeak.com')
+THINGSPEAK_MQTT_PORT = os.getenv('THINGSPEAK_MQTT_PORT', 1883)
 
 # Define the base URL for your API endpoints (update as needed)
-API_BASE_URL = "http://localhost:8080"
-
+DB_CONNECTOR_URL = os.getenv('DB_CONNECTOR_URL', 'http://localhost:8080')
 
 class ThingSpeakAdapter:
     def __init__(self):
@@ -118,7 +118,7 @@ class ThingSpeakAdapter:
         """
         # If patient_id is not provided but passport_code is, get patient info first
         if patient_id is None and passport_code is not None:
-            url = f"{API_BASE_URL}/patient"
+            url = f"{DB_CONNECTOR_URL}/patient"
             params = {"passport_code": passport_code}
             response = requests.get(url, params=params)
             response.raise_for_status()
@@ -128,7 +128,7 @@ class ThingSpeakAdapter:
             patient_id = patient_data[0].get("patient_id")
 
         # Query devices endpoint with the provided filters
-        url = f"{API_BASE_URL}/device"
+        url = f"{DB_CONNECTOR_URL}/device"
         params = {}
         if patient_id is not None:
             params["patient_id"] = patient_id
@@ -154,7 +154,7 @@ class ThingSpeakAdapter:
         Retrieves a mapping from Thingspeak field keys to entity names for sensor entities of the given device.
         Uses the API endpoint to get the entities.
         """
-        url = f"{API_BASE_URL}/entity"
+        url = f"{DB_CONNECTOR_URL}/entity"
         params = {"device_id": device_id, "entity_type": "sensor"}
         response = requests.get(url, params=params)
         response.raise_for_status()
@@ -229,7 +229,7 @@ class ThingSpeakAdapter:
         Otherwise, the next available field ID is determined and updated.
         """
         # Check if the entity already has an assigned field ID
-        url = f"{API_BASE_URL}/entity"
+        url = f"{DB_CONNECTOR_URL}/entity"
         params = {"entity_id": entity_id}
         response = requests.get(url, params=params)
         response.raise_for_status()
@@ -242,7 +242,7 @@ class ThingSpeakAdapter:
                 return record.get("thingspeak_field_id")
 
         # Retrieve all entities for the device to find assigned field IDs
-        url = f"{API_BASE_URL}/entity"
+        url = f"{DB_CONNECTOR_URL}/entity"
         params = {"device_id": device_id}
         response = requests.get(url, params=params)
         response.raise_for_status()
@@ -259,7 +259,7 @@ class ThingSpeakAdapter:
         cherrypy.log("[THINGSPEAK] Assigning new ThingSpeak field ID: {}".format(field_id))
 
         # Update the entity with the new field ID via PUT
-        url = f"{API_BASE_URL}/entity?entity_id={entity_id}"
+        url = f"{DB_CONNECTOR_URL}/entity?entity_id={entity_id}"
         payload = {"thingspeak_field_id": field_id}
         response = requests.put(url, json=payload)
         response.raise_for_status()
