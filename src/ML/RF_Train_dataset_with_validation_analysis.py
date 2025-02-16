@@ -49,7 +49,8 @@ class RFHealthPredictor:
 
         self.model_health.fit(X_train, y_health_train)
         self.model_severity.fit(X_train_s, y_severity_train)
-
+        # These parameters are for Random Forest model
+        # We also change the values by checking the results of accuracy
         # Perform hyperparameter tuning on validation set
         param_grid_rf = {
             'n_estimators': [50, 100, 200],
@@ -107,7 +108,7 @@ class RFHealthPredictor:
         plt.ylim(0, 1)
         plt.show()
 
-
+#Use this dataset to train model
 training_file = "D:/IOT_september_2024/project_healthy/src/ML/disease_diagnosis.csv"
 predictor = RFHealthPredictor(training_file)
 predictor.preprocess_training_data()
