@@ -13,14 +13,14 @@ class BodyTemperatureSensor(DeviceEntity):
         """
         Simulate body temperature in °C.
         """
-        temperature = round(random.uniform(36.0, 38.0), 2)
-        print(f"Body Temperature Sensor - Data read: {temperature}°C")
+        temperature = round(random.uniform(36.0, 39.9), 2)
+        print(f"[BodyTemperatureSensor] Body Temperature Sensor - Data read: {temperature}°C")
         return temperature
 
     def send_data(self, b_temp):
         if self.mqtt_topic:
             data = {'body_temperature': b_temp}
             self.mqtt_handler.publish(self.mqtt_topic, str(b_temp))
-            print(f"Sending data: {data}, to {self.mqtt_topic}.")
+            print(f"[BodyTemperatureSensor] Sending data: {data}, to {self.mqtt_topic}.")
         else:
-            print("MQTT topic not set. Data not sent.")
+            print("[BodyTemperatureSensor] MQTT topic not set. Data not sent.")

@@ -54,12 +54,17 @@ class DatabaseHandler:
         self.execute_script(self.schema_file)
 
     def query_data(self, query, params=()):
-        self.cursor.execute(query, params)
-        return self.cursor.fetchall()
+        cur = self.conn.cursor()  # Create a new cursor due to concurrence
+        cur.execute(query, params)
+        results = cur.fetchall()
+        cur.close()  # Close the cursor when done
+        return results
 
     def execute_query(self, query, params=()):
-        self.cursor.execute(query, params)
+        cur = self.conn.cursor()
+        cur.execute(query, params)
         self.conn.commit()
+        cur.close()
 
     def insert_data(self, table_name, **kwargs):
         columns = ', '.join(kwargs.keys())
@@ -158,7 +163,10 @@ class APIHandler:
             return self.handle_get_request("Patients", id, params)
         elif method == 'POST':
             required_fields = ["name", "address", "emergency_contact", "passport_code", "admin_id"]
-            return self.handle_post_request("Patients", data, required_fields)
+            if not all(field in data for field in required_fields):
+                cherrypy.response.status = 400
+                return STATUS_ERROR
+            return self.handle_post_request("Patients", data, data.keys())
         elif method == 'PUT' and id:
             return self.handle_put_request("Patients", id, data, data.keys())
         elif method == 'DELETE' and id:
@@ -185,7 +193,10 @@ class APIHandler:
             return self.handle_get_request("Devices", id, params)
         elif method == 'POST':
             required_fields = ["mac_address", "device_name", "device_type", "patient_id", "admin_id"]
-            return self.handle_post_request("Devices", data, required_fields)
+            if not all(field in data for field in required_fields):
+                cherrypy.response.status = 400
+                return STATUS_ERROR
+            return self.handle_post_request("Devices", data, data.keys())
         elif method == 'PUT' and id:
             return self.handle_put_request("Devices", id, data, data.keys())
         elif method == 'DELETE' and id:
@@ -207,11 +218,14 @@ class APIHandler:
             else:
                 cherrypy.response.status = 400
                 return STATUS_ERROR
-        print(data)
+
         if method == 'GET':
             return self.handle_get_request("DeviceEntities", id, params)
         elif method == 'POST':
             required_fields = ["entity_type", "entity_name", "device_id"]
+            if not all(field in data for field in required_fields):
+                cherrypy.response.status = 400
+                return STATUS_ERROR
             return self.handle_post_request("DeviceEntities", data, data.keys())
         elif method == 'PUT' and id:
             return self.handle_put_request("DeviceEntities", id, data, data.keys())
@@ -245,9 +259,12 @@ class APIHandler:
             composite_params = {"chat_id": chat_id, "patient_id": patient_id}
             telegram_data = self.handle_get_request("TelegramBot", bot_id, composite_params)
 
-            required_fields = ['bot_token', 'chat_id', 'patient_id']
             if not telegram_data:
-                return self.handle_post_request("TelegramBot", data, required_fields)
+                required_fields = ['bot_token', 'chat_id', 'patient_id']
+                if not all(field in data for field in required_fields):
+                    cherrypy.response.status = 400
+                    return STATUS_ERROR
+                return self.handle_post_request("TelegramBot", data, data.keys())
             return {"status": "data already exists"}
         elif method == 'PUT' and bot_id:
             return self.handle_put_request("TelegramBot", bot_id, data, data.keys())
@@ -275,7 +292,10 @@ class APIHandler:
             return self.handle_get_request("Endpoints", endpoint_id, params)
         elif method == 'POST':
             required_fields = ['service_id', 'entity_id', 'endpoint']
-            return self.handle_post_request("Endpoints", data, required_fields)
+            if not all(field in data for field in required_fields):
+                cherrypy.response.status = 400
+                return STATUS_ERROR
+            return self.handle_post_request("Endpoints", data, data.keys())
         elif method == 'PUT' and endpoint_id:
             return self.handle_put_request("Endpoints", endpoint_id, data, data.keys())
         elif method == 'DELETE' and endpoint_id:
@@ -354,7 +374,10 @@ class APIHandler:
             return self.handle_get_request("Admins", admin_id, params)
         elif method == 'POST':
             required_fields = ['name', 'email', 'password']
-            return self.handle_post_request("Admins", data, required_fields)
+            if not all(field in data for field in required_fields):
+                cherrypy.response.status = 400
+                return STATUS_ERROR
+            return self.handle_post_request("Admins", data, data.keys())
         elif method == 'PUT' and admin_id:
             return self.handle_put_request("Admins", admin_id, data, data.keys())
         elif method == 'DELETE' and admin_id:
@@ -381,7 +404,10 @@ class APIHandler:
             return self.handle_get_request("Services", service_id, params)
         elif method == 'POST':
             required_fields = ['name', 'alias', 'protocol']
-            return self.handle_post_request("Services", data, required_fields)
+            if not all(field in data for field in required_fields):
+                cherrypy.response.status = 400
+                return STATUS_ERROR
+            return self.handle_post_request("Services", data, data.keys())
         elif method == 'PUT' and service_id:
             return self.handle_put_request("Services", service_id, data, data.keys())
         elif method == 'DELETE' and service_id:
@@ -407,9 +433,11 @@ class APIHandler:
         if method == 'GET':
             return self.handle_get_request("EntityConfigurations", config_id, params)
         elif method == 'POST':
-            # Campos obrigatórios: entity_id, config_key e config_value
             required_fields = ['entity_id', 'config_key', 'config_value']
-            return self.handle_post_request("EntityConfigurations", data, required_fields)
+            if not all(field in data for field in required_fields):
+                cherrypy.response.status = 400
+                return STATUS_ERROR
+            return self.handle_post_request("EntityConfigurations", data, data.keys())
         elif method == 'PUT' and config_id:
             return self.handle_put_request("EntityConfigurations", config_id, data, data.keys())
         elif method == 'DELETE' and config_id:
@@ -435,9 +463,11 @@ class APIHandler:
         if method == 'GET':
             return self.handle_get_request("ConfigKeys", key, params)
         elif method == 'POST':
-            # Campos obrigatórios: config_key, description, value_type e apply_to
             required_fields = ['config_key', 'description', 'value_type', 'apply_to']
-            return self.handle_post_request("ConfigKeys", data, required_fields)
+            if not all(field in data for field in required_fields):
+                cherrypy.response.status = 400
+                return STATUS_ERROR
+            return self.handle_post_request("ConfigKeys", data, data.keys())
         elif method == 'PUT' and key:
             return self.handle_put_request("ConfigKeys", key, data, data.keys())
         elif method == 'DELETE' and key:
