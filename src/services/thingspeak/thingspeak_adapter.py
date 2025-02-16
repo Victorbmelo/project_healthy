@@ -139,14 +139,35 @@ class ThingSpeakAdapter:
         else:
             query = query.strip().rstrip("WHERE")
 
-        cherrypy.log("DEBUG: [THINGSPEAK] Query: {} with params: {}".format(query, params))
+        cherrypy.log("[THINGSPEAK] Query: {} with params: {}".format(query, params))
         result = db.query_data(query, params)
-        cherrypy.log("DEBUG: [THINGSPEAK] Query result: {}".format(result))
+        cherrypy.log("[THINGSPEAK] Query result: {}".format(result))
         return result if result else []
 
-    def transform_thingspeak_data(self, ts_json, device_id):
+    def get_entity_names_for_device(self, device_id):
+        """
+        Retrieves a mapping from Thingspeak field keys to entity names for sensor entities of the given device.
+        Only sensor entities (entity_type='sensor') are considered.
+        """
+        db = self.get_db_connection()
+        query = """
+            SELECT thingspeak_field_id, entity_name
+            FROM DeviceEntities
+            WHERE device_id = ? AND entity_type = 'sensor'
+        """
+        rows = db.query_data(query, (device_id,))
+        mapping = {}
+        for thingspeak_field_id, entity_name in rows:
+            if thingspeak_field_id is not None and entity_name:
+                key = f"field{thingspeak_field_id}"
+                mapping[key] = entity_name
+        return mapping
+
+    def transform_thingspeak_data(self, ts_json, device_id, use_db_entity_name=False):
         """
         Transforms the Thingspeak JSON into an intelligent format, grouping data from each sensor.
+        If use_db_entity_name, the sensor name is overridden by the entity_name stored in the database if available.
+
         Returns a dictionary in the format:
         {
             "Device_id": <device_id>,
@@ -165,11 +186,26 @@ class ThingSpeakAdapter:
         channel = ts_json.get("channel", {})
         feeds = ts_json.get("feeds", [])
 
+        # Build the sensor mapping:
+        # If use_db_entity_name
+        # Use the database entity_name if available; otherwise, use the channel metadata.
+        # else
         # Map each field (field1, field2, ...) to the sensor name provided in the channel data
         sensors = {}
-        for key, sensor_name in channel.items():
-            if key.startswith("field") and sensor_name:
-                sensors[key] = sensor_name
+        if use_db_entity_name:
+            # Get entity names mapping from the database
+            db_entity_names = self.get_entity_names_for_device(device_id)
+
+            for key, channel_value in channel.items():
+                if key.startswith("field"):
+                    # If a database entry exists for this field, use it. Otherwise, fallback to the channel metadata.
+                    sensor_name = db_entity_names.get(key, channel_value)
+                    if sensor_name:
+                        sensors[key] = sensor_name
+        else:
+            for key, sensor_name in channel.items():
+                if key.startswith("field") and sensor_name:
+                    sensors[key] = sensor_name
 
         # Initialize the structure for each sensor
         sensor_data = {sensor_name: [] for sensor_name in sensors.values()}
@@ -207,8 +243,8 @@ class ThingSpeakAdapter:
         result = db.query_data(query, (entity_id,))
 
         if result and result[0][0] is not None:
-            cherrypy.log("INFO: [THINGSPEAK] Entity {} already has a ThingSpeak field ID: {}".format(entity_id, result[0][0]))
-            cherrypy.log("INFO: [THINGSPEAK] Query: {}".format(query))
+            cherrypy.log("[THINGSPEAK] Entity {} already has a ThingSpeak field ID: {}".format(entity_id, result[0][0]))
+            cherrypy.log("[THINGSPEAK] Query: {}".format(query))
             return result[0][0]
 
         # Retrieve assigned field IDs for the device
@@ -222,11 +258,11 @@ class ThingSpeakAdapter:
         if result:
             assigned_fields = [row[0] for row in result if row[0] is not None]
             field_id = max(assigned_fields) + 1 if assigned_fields else 1
-            cherrypy.log("INFO: [THINGSPEAK] Found assigned field IDs for device {}: {}".format(device_id, assigned_fields))
-            cherrypy.log("INFO: [THINGSPEAK] Assigning new ThingSpeak field ID: {}".format(field_id))
+            cherrypy.log("[THINGSPEAK] Found assigned field IDs for device {}: {}".format(device_id, assigned_fields))
+            cherrypy.log("[THINGSPEAK] Assigning new ThingSpeak field ID: {}".format(field_id))
         else:
             field_id = 1
-            cherrypy.log("INFO: [THINGSPEAK] No ThingSpeak field IDs found for device {}. Starting from {}.".format(device_id, field_id))
+            cherrypy.log("[THINGSPEAK] No ThingSpeak field IDs found for device {}. Starting from {}.".format(device_id, field_id))
 
         # Assign the new field ID to the entity
         update_query = """
@@ -235,7 +271,7 @@ class ThingSpeakAdapter:
             WHERE entity_id = ?;
         """
         db.execute_query(update_query, (field_id, entity_id))
-        cherrypy.log("INFO: [THINGSPEAK] Successfully assigned ThingSpeak field ID {} to entity {}.".format(field_id, entity_id))
+        cherrypy.log("[THINGSPEAK] Successfully assigned ThingSpeak field ID {} to entity {}.".format(field_id, entity_id))
 
         return field_id
 
@@ -268,8 +304,8 @@ class ThingSpeakAdapter:
         cherrypy.quickstart(self)
 
     def _listen_to_entities(self):
-        self._local_mqtt.subscribe("/+/+/+/+")
+        self._local_mqtt.subscribe("+/+/+/+")
 
 if __name__ == "__main__":
-    cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8080})
+    cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8081})
     cherrypy.quickstart(ThingSpeakAdapter())
