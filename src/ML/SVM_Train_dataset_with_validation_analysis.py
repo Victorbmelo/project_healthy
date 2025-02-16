@@ -1,6 +1,6 @@
 #############https://www.kaggle.com/datasets/s3programmer/disease-diagnosis-dataset
 ########The above address is the address through which the dataset is downloaded
-##This code gives me a model using random Forest, I save the output in pkl format and use in "Project_ML_analysis"
+##This code gives me a model using Suport Vactor Machine(SVM), I save the output in pkl format and use in "Project_ML_analysis"
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -74,6 +74,7 @@ class SVMHealthPredictor:
         print("Best Parameters (SVM - Severity Diagnosis):", best_params_severity)
 
         # Evaluate on test set using best parameters
+        ## accuracy_score compute the percentage of correctly predicted labels compared to the total number of samples in the test set.
         y_health_test_pred_svm = self.model_health.predict(X_test)
         test_health_accuracy_svm = accuracy_score(y_health_test, y_health_test_pred_svm)
 
