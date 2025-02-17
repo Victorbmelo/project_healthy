@@ -1,12 +1,18 @@
+import os
 import requests
 import paho.mqtt.client as mqtt
 import schedule
 import time
 from datetime import datetime
 
+# Define the base URL for your API endpoints (update as needed)
+DB_CONNECTOR_URL = os.getenv('DB_CONNECTOR_URL', 'http://localhost:8080')
+BROKER_MQTT_URL = os.getenv('BROKER_MQTT_URL', "http://localhost")
+BROKER_MQTT_PORT = os.getenv('BROKER_MQTT_PORT', 1883)
+
+
 class SchedulerService:
     def __init__(self, api_url, mqtt_broker, mqtt_port=1883):
-        self.api_url = api_url
         self.mqtt_broker = mqtt_broker
         self.mqtt_port = mqtt_port
         self.mqtt_client = mqtt.Client()
@@ -26,7 +32,7 @@ class SchedulerService:
         params = {"day_of_week": current_day}
         print(f"[SchedulerService] Fetching schedules for {current_day}")
         try:
-            response = requests.get(f"{self.api_url}/schedule", params=params)
+            response = requests.get(f"{DB_CONNECTOR_URL}/schedule", params=params)
             if response.status_code != 200:
                 print(f"[SchedulerService] Error fetching schedules: HTTP {response.status_code}")
                 return []
@@ -74,7 +80,7 @@ class SchedulerService:
     def send_mqtt_command(self, entity_id, action):
         print(f"[SchedulerService] Retrieving endpoint for entity {entity_id}")
         try:
-            response = requests.get(f"{self.api_url}/endpoint", params={'entity_id': entity_id})
+            response = requests.get(f"{DB_CONNECTOR_URL}/endpoint", params={'entity_id': entity_id})
             if response.status_code != 200:
                 print(f"[SchedulerService] Error getting endpoint: HTTP {response.status_code}")
                 return
@@ -100,7 +106,7 @@ class SchedulerService:
         Deletes a schedule using the API if it is non-repeating.
         """
         try:
-            response = requests.delete(f"{self.api_url}/schedule", params={"schedule_id": schedule_id})
+            response = requests.delete(f"{DB_CONNECTOR_URL}/schedule", params={"schedule_id": schedule_id})
             if response.status_code == 200:
                 print(f"[SchedulerService] Schedule {schedule_id} deleted successfully")
             else:
@@ -139,11 +145,8 @@ class SchedulerService:
             print("\n[SchedulerService] Shutting down scheduler service")
 
 if __name__ == "__main__":
-    api_url = "http://your-api-url"           # update with your actual API URL
-    mqtt_broker = "mqtt.broker.address"         # update with your MQTT broker address
-
     print("[SchedulerService] Initializing service instance")
-    scheduler_service = SchedulerService(api_url, mqtt_broker)
+    scheduler_service = SchedulerService(DB_CONNECTOR_URL, BROKER_MQTT_URL)
 
     print("[SchedulerService] Starting main execution")
     scheduler_service.start_scheduler()

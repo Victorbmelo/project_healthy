@@ -1,7 +1,6 @@
 import telepot
 from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
-import json
 import requests
 import time
 from MyMQTT import *
@@ -11,15 +10,19 @@ import numpy as np
 import os
 
 ###### The URLs in the code to be able to change easily for dockerisation
-thinkspeak_URL = "http://localhost:8081"
-db_connector_URL = "http://localhost:8080"
+DB_CONNECTOR_URL = os.getenv("DB_CONNECTOR_URL", "http://localhost:8080")
+THINGSPEAK_ADAPTER_URL = os.getenv('THINGSPEAK_ADAPTER_URL', 'http://localhost:8081')
+BROKER_MQTT_URL = os.getenv('BROKER_MQTT_URL', "http://localhost")
+BROKER_MQTT_PORT = os.getenv('BROKER_MQTT_PORT', 1883)
+TELEGRAMBOT_TOKEN = os.getenv('TELEGRAMBOT_TOKEN', '7543918154:AAHAM3AYjk9dIM2evdFsT0VXuS9nW-mzuYo')
+
 
 class dbHandler:
     exposed = True
     ### Send passport code to dB connector
     @staticmethod
     def GetRequest(passport_code):
-        url = f"{db_connector_URL}/patient?passport_code={passport_code}"
+        url = f"{DB_CONNECTOR_URL}/patient?passport_code={passport_code}"
         try:
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
@@ -36,7 +39,7 @@ class dbHandler:
     ######This part is used to save chat_ID in the database using /telegrambot API  
     @staticmethod
     def SaveChatID(bot_token, chat_ID, patient_id):
-        url = f"{db_connector_URL}/telegrambot"
+        url = f"{DB_CONNECTOR_URL}/telegrambot"
         payload = {
             "bot_token": bot_token,
             "chat_id": str(chat_ID),
@@ -55,7 +58,7 @@ class dbHandler:
     ###Retrieve chat_ID from the database for a given patient ID   
     @staticmethod
     def GetChatID(patient_id):
-        url = f"{db_connector_URL}/telegrambot?patient_id={patient_id}"
+        url = f"{DB_CONNECTOR_URL}/telegrambot?patient_id={patient_id}"
         try:
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
@@ -71,7 +74,7 @@ class dbHandler:
 class ThingSpeakHandler:
     @staticmethod
     def get_data(passport_code):
-        url = f"{thinkspeak_URL}/thingspeak?passport_code={passport_code}"
+        url = f"{THINGSPEAK_ADAPTER_URL}/thingspeak?passport_code={passport_code}"
         try:
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
@@ -87,7 +90,7 @@ class ThingSpeakHandler:
             return None
 
 class HealthmonitorBot:
-    def __init__(self, token, broker, port, topic ):
+    def __init__(self, token, broker, port):
         self.tokenBot = token
         self.bot = telepot.Bot(self.tokenBot)
         self.client = MyMQTT("telegramBotClientID", broker, port, None)
@@ -258,19 +261,10 @@ class HealthmonitorBot:
         return image_stream
 
 if __name__ == "__main__":
-    
-    # Get the directory of the current script
-    # add this code so the problem of setting.json was solved (not nevessary to use the local address)
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    config_path = os.path.join(BASE_DIR, "settings.json")
-
-    # Load JSON
-    conf = json.load(open(config_path))
-    token = conf["telegramToken"]
-    broker = conf["brokerIP1"]
-    port = conf["brokerPort"]
-    topic = conf["mqttTopic"]
-    sb = HealthmonitorBot(token, broker, port, topic)
+    broker = BROKER_MQTT_URL
+    port = int(BROKER_MQTT_PORT)
+    token = TELEGRAMBOT_TOKEN
+    sb = HealthmonitorBot(token, broker, port)
 
     while True:
         time.sleep(3)
