@@ -1,4 +1,6 @@
 import random
+import signal
+import sys
 import time
 import threading
 
@@ -16,6 +18,8 @@ from src.device_connectors.humidity_sensor import HumiditySensor
 from src.device_connectors.body_temp_sensor import BodyTemperatureSensor
 from src.device_connectors.blood_pressure_sensor import BloodPressureSensor
 from src.device_connectors.lamp_actuator import LampActuator
+
+stop_event = threading.Event()
 
 
 class ServiceManager:
@@ -45,6 +49,14 @@ def simulate_sensors_data(entity: DeviceEntity):
         time_to_sleep = random.randint(20, 30)
         entity.send_data(entity.read_data())
         time.sleep(time_to_sleep)
+
+def signal_handler(sig, frame):
+    print("Shutting down...")
+    stop_event.set()
+    sys.exit(0)
+
+# Register the signal handler for graceful shutdown
+signal.signal(signal.SIGINT, signal_handler)
 
 
 def main():
@@ -94,22 +106,9 @@ def main():
 
 
     # ================================================  Init ServiceManager
-        # simulate readings and actions
-    t = threading.Thread(target=simulate_sensors_data, args=[body_temp_sensor])
-    t.daemon = True
-    t.start()
-    t2 = threading.Thread(target=simulate_sensors_data, args=[temp_humidity_sensor])
-    t2.daemon = True
-    t2.start()
-    t3 = threading.Thread(target=simulate_sensors_data, args=[blood_pressure_sensor2])
-    t3.daemon = True
-    t3.start()
-    t4 = threading.Thread(target=simulate_sensors_data, args=[air_temp_sensor])
-    t4.daemon = True
-    t4.start()
-    # service = SchedulerService('http://localhost:8080', 'localhost')
-    # t5 = threading.Thread(target=service.start_scheduler, args=[])
-    # t5.daemon = True
+    service = SchedulerService('http://localhost:8080', 'localhost')
+    t5 = threading.Thread(target=service.start_scheduler, args=[])
+    t5.daemon = True
     # t5.start()
 
     # service_manager = ServiceManager()
@@ -118,6 +117,29 @@ def main():
     # service_manager.start_service('body_temperature')
     # service_manager.start_service('scheduler')
     # service_manager.start_service('thingspeak')
+
+    # # Create and start threads
+    threads = []
+    sensors = [body_temp_sensor, temp_humidity_sensor, blood_pressure_sensor2, air_temp_sensor]
+    for sensor in sensors:
+        t = threading.Thread(target=simulate_sensors_data, args=[sensor])
+        t.daemon = True
+        t.start()
+        threads.append(t)
+
+    t5.start()
+    threads.append(t5)
+
+    # Wait for threads to finish (block main thread)
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("Main program interrupted. Stopping threads...")
+        stop_event.set()
+        for t in threads:
+            t.join()  # Wait for threads to finish
+        print("All threads stopped. Exiting.")
 
 
 if __name__ == "__main__":

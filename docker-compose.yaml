@@ -19,6 +19,8 @@ services:
       - URL_PORT=8080
       - DB_FILENAME=ProjectHealth.db
       - SCHEMA_FILENAME=sql_generate.sql
+    networks:
+      - mqtt_network
 
   thingspeak_adapter:
     build:
@@ -33,6 +35,10 @@ services:
       - THINGSPEAK_API_READ_URL=https://api.thingspeak.com/channels/{channel_id}/feeds.json
       - THINGSPEAK_MQTT_URL=mqtt3.thingspeak.com
       - THINGSPEAK_MQTT_PORT=1883
+      - BROKER_MQTT_URL=mqtt_broker
+      - BROKER_MQTT_PORT=1883
+    networks:
+      - mqtt_network
 
   scheduler_service:
     build:
@@ -56,6 +62,8 @@ services:
       - ML_PORT=8082
     depends_on:
       - thingspeak_adapter
+    networks:
+      - mqtt_network
 
   air_conditioning_service:
     build:
