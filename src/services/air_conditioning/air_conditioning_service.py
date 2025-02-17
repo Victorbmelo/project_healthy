@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import time
 import requests
 
 import sys
@@ -67,7 +68,8 @@ class AirConditioningService:
         mqtt.subscribe(self.MQTT_TOPIC)
         print(f"[AirConditioningService] Air Conditioning Service started and subscribed to {self.MQTT_TOPIC}")
         try:
-            mqtt._client.loop_forever()
+            while True:
+                time.sleep(1)
         except KeyboardInterrupt:
             mqtt.close()
             print("[AirConditioningService] Air Conditioning Service stopped.")

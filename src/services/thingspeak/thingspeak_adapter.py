@@ -16,9 +16,13 @@ THINGSPEAK_MQTT_PORT = os.getenv('THINGSPEAK_MQTT_PORT', 1883)
 # Define the base URL for your API endpoints (update as needed)
 DB_CONNECTOR_URL = os.getenv('DB_CONNECTOR_URL', 'http://localhost:8080')
 
+BROKER_MQTT_URL = os.getenv('BROKER_MQTT_URL', "http://localhost")
+BROKER_MQTT_PORT = os.getenv('BROKER_MQTT_PORT', 1883)
+
+
 class ThingSpeakAdapter:
     def __init__(self):
-        self._local_mqtt = MqttHandler(client_id='local-thingspeak-adapter')
+        self._local_mqtt = MqttHandler(client_id='local-thingspeak-adapter', broker=BROKER_MQTT_URL, port=int(BROKER_MQTT_PORT))
         self._local_mqtt.set_on_message_callback(self.on_message)
 
         self._thingspeak_mqtt = MqttHandler(
