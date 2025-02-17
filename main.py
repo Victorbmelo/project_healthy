@@ -107,17 +107,17 @@ def main():
     t4 = threading.Thread(target=simulate_sensors_data, args=[air_temp_sensor])
     t4.daemon = True
     t4.start()
-    service = SchedulerService('http://localhost:8080', 'localhost')
-    t5 = threading.Thread(target=service.start_scheduler, args=[])
-    t5.daemon = True
-    t5.start()
+    # service = SchedulerService('http://localhost:8080', 'localhost')
+    # t5 = threading.Thread(target=service.start_scheduler, args=[])
+    # t5.daemon = True
+    # t5.start()
 
-    service_manager = ServiceManager()
-    service_manager.start_service('air_conditioning')
-    service_manager.start_service('blood_pressure')
-    service_manager.start_service('body_temperature')
-    service_manager.start_service('scheduler')
-    service_manager.start_service('thingspeak')
+    # service_manager = ServiceManager()
+    # service_manager.start_service('air_conditioning')
+    # service_manager.start_service('blood_pressure')
+    # service_manager.start_service('body_temperature')
+    # service_manager.start_service('scheduler')
+    # service_manager.start_service('thingspeak')
 
 
 if __name__ == "__main__":
