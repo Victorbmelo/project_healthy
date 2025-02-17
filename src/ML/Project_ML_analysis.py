@@ -129,6 +129,6 @@ if __name__ == "__main__":
 
     cherrypy.tree.mount(DashboardConnection(), '/', conf)  
     cherrypy.config.update({'server.socket_host': '0.0.0.0'})
-    cherrypy.config.update({'server.socket_port': ML_PORT})
+    cherrypy.config.update({'server.socket_port': int(ML_PORT)})
     cherrypy.engine.start()
     cherrypy.engine.block()

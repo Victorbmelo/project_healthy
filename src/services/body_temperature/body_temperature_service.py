@@ -2,9 +2,15 @@ import datetime
 import json
 import os
 import requests
+
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
+
 from src.mqtt.mqtt_handler import MqttHandler
 
 DB_CONNECTOR_URL = os.getenv("DB_CONNECTOR_URL", "http://localhost:8080")
+BROKER_MQTT_URL = os.getenv('BROKER_MQTT_URL', "http://localhost")
+BROKER_MQTT_PORT = os.getenv('BROKER_MQTT_PORT', 1883)
 
 
 class BodyTemperatureService:
@@ -56,13 +62,17 @@ class BodyTemperatureService:
             client.publish(send_topic, json.dumps(data))
 
     def start(self):
-        mqtt = MqttHandler(client_id='body-temperature-service')
+        mqtt = MqttHandler(client_id='body-temperature-service', broker=BROKER_MQTT_URL, port=int(BROKER_MQTT_PORT))
         mqtt._client.on_message = self.on_message
         mqtt.connect()
         mqtt.subscribe(self.MQTT_TOPIC)
         print(f"[BodyTemperatureService] Body Temperature Service started and subscribed to {self.MQTT_TOPIC}")
         try:
-            pass
+            mqtt._client.loop_forever()
         except KeyboardInterrupt:
             mqtt.close()
             print("[BodyTemperatureService] Body Temperature Service stopped.")
+
+if __name__ == "__main__":
+    service = BodyTemperatureService()
+    service.start()

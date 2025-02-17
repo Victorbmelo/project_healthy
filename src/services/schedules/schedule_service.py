@@ -7,7 +7,7 @@ from datetime import datetime
 
 # Define the base URL for your API endpoints (update as needed)
 DB_CONNECTOR_URL = os.getenv('DB_CONNECTOR_URL', 'http://localhost:8080')
-BROKER_MQTT_URL = os.getenv('BROKER_MQTT_URL', 'mqtt3.thingspeak.com')
+BROKER_MQTT_URL = os.getenv('BROKER_MQTT_URL', "http://localhost")
 BROKER_MQTT_PORT = os.getenv('BROKER_MQTT_PORT', 1883)
 
 
@@ -145,11 +145,8 @@ class SchedulerService:
             print("\n[SchedulerService] Shutting down scheduler service")
 
 if __name__ == "__main__":
-    api_url = "http://your-api-url"           # update with your actual API URL
-    mqtt_broker = "mqtt.broker.address"         # update with your MQTT broker address
-
     print("[SchedulerService] Initializing service instance")
-    scheduler_service = SchedulerService(api_url, mqtt_broker)
+    scheduler_service = SchedulerService(DB_CONNECTOR_URL, BROKER_MQTT_URL)
 
     print("[SchedulerService] Starting main execution")
     scheduler_service.start_scheduler()

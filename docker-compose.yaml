@@ -1,0 +1,141 @@
+version: '3.8'
+services:
+  mqtt_broker:
+    image: eclipse-mosquitto
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    networks:
+      - mqtt_network
+
+  db_connector:
+    build:
+      context: .
+      dockerfile: src/database/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - URL_PORT=8080
+      - DB_FILENAME=ProjectHealth.db
+      - SCHEMA_FILENAME=sql_generate.sql
+
+  thingspeak_adapter:
+    build:
+      context: .
+      dockerfile: src/services/thingspeak/Dockerfile
+    ports:
+      - "8081:8081"
+    depends_on:
+      - db_connector
+    environment:
+      - DB_CONNECTOR_URL=http://db_connector:8080
+      - THINGSPEAK_API_READ_URL=https://api.thingspeak.com/channels/{channel_id}/feeds.json
+      - THINGSPEAK_MQTT_URL=mqtt3.thingspeak.com
+      - THINGSPEAK_MQTT_PORT=1883
+
+  scheduler_service:
+    build:
+      context: .
+      dockerfile: src/services/schedules/Dockerfile
+    environment:
+      - DB_CONNECTOR_URL=http://db_connector:8080
+      - BROKER_MQTT_URL=mqtt_broker
+      - BROKER_MQTT_PORT=1883
+    networks:
+      - mqtt_network
+
+  machine_learn:
+    build:
+      context: .
+      dockerfile: src/ML/Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - THINGSPEAK_ADAPTER_URL=thingspeak_adapter
+      - ML_PORT=8082
+    depends_on:
+      - thingspeak_adapter
+
+  air_conditioning_service:
+    build:
+      context: .
+      dockerfile: src/services/air_conditioning/Dockerfile
+    environment:
+      - DB_CONNECTOR_URL=http://db_connector:8080
+      - BROKER_MQTT_URL=mqtt_broker
+      - BROKER_MQTT_PORT=1883
+    depends_on:
+      - db_connector
+      - mqtt_broker
+    networks:
+      - mqtt_network
+
+  blood_pressure_service:
+    build:
+      context: .
+      dockerfile: src/services/blood_pressure/Dockerfile
+    environment:
+      - DB_CONNECTOR_URL=http://db_connector:8080
+      - BROKER_MQTT_URL=mqtt_broker
+      - BROKER_MQTT_PORT=1883
+    depends_on:
+      - db_connector
+      - mqtt_broker
+    networks:
+      - mqtt_network
+
+  body_temperature_service:
+    build:
+      context: .
+      dockerfile: src/services/body_temperature/Dockerfile
+    environment:
+      - DB_CONNECTOR_URL=http://db_connector:8080
+      - BROKER_MQTT_URL=mqtt_broker
+      - BROKER_MQTT_PORT=1883
+    depends_on:
+      - db_connector
+      - mqtt_broker
+    networks:
+      - mqtt_network
+
+  telegram_bot:
+    build:
+      context: .
+      dockerfile: src/services/telegram_bot/Dockerfile
+    environment:
+      - DB_CONNECTOR_URL=http://db_connector:8080
+      - THINGSPEAK_ADAPTER_URL=thingspeak_adapter
+      - BROKER_MQTT_URL=mqtt_broker
+      - BROKER_MQTT_PORT=1883
+    depends_on:
+      - db_connector
+      - thingspeak_adapter
+      - mqtt_broker
+    networks:
+      - mqtt_network
+
+  nodered:
+    build:
+      context: ./src/nodered
+      dockerfile: Dockerfile
+    ports:
+      - "1880:1880"
+    volumes:
+      - ./src/nodered/dashboardNodered.json:/data/flows.json
+      - ./src/nodered/settings.js:/data/settings.js
+    environment:
+      - URL_DBCONNECTOR=http://db_connector:8080/
+      - URL_THINGSPEAK=http://thingspeak_adapter:8081/
+      - URL_ML=http://machine_learn:8082/
+      - URL_BROKER=mqtt://mqtt_broker:1883/
+    depends_on:
+      - db_connector
+      - thingspeak_adapter
+      - mqtt_broker
+    networks:
+      - mqtt_network
+
+networks:
+  mqtt_network:
+    driver: bridge

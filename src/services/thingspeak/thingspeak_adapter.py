@@ -2,6 +2,10 @@ import os
 import cherrypy
 import requests
 import threading
+
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
+
 from src.mqtt.mqtt_handler import MqttHandler
 
 # External Thingspeak constants

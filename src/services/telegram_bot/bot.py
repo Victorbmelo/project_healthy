@@ -1,7 +1,6 @@
 import telepot
 from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
-import json
 import requests
 import time
 from MyMQTT import *
@@ -13,6 +12,9 @@ import os
 ###### The URLs in the code to be able to change easily for dockerisation
 DB_CONNECTOR_URL = os.getenv("DB_CONNECTOR_URL", "http://localhost:8080")
 THINGSPEAK_ADAPTER_URL = os.getenv('THINGSPEAK_ADAPTER_URL', 'http://localhost:8081')
+BROKER_MQTT_URL = os.getenv('BROKER_MQTT_URL', "http://localhost")
+BROKER_MQTT_PORT = os.getenv('BROKER_MQTT_PORT', 1883)
+TELEGRAMBOT_TOKEN = os.getenv('TELEGRAMBOT_TOKEN', '7543918154:AAHAM3AYjk9dIM2evdFsT0VXuS9nW-mzuYo')
 
 
 class dbHandler:
@@ -88,7 +90,7 @@ class ThingSpeakHandler:
             return None
 
 class HealthmonitorBot:
-    def __init__(self, token, broker, port, topic ):
+    def __init__(self, token, broker, port):
         self.tokenBot = token
         self.bot = telepot.Bot(self.tokenBot)
         self.client = MyMQTT("telegramBotClientID", broker, port, None)
@@ -259,19 +261,10 @@ class HealthmonitorBot:
         return image_stream
 
 if __name__ == "__main__":
-    
-    # Get the directory of the current script
-    # add this code so the problem of setting.json was solved (not nevessary to use the local address)
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    config_path = os.path.join(BASE_DIR, "settings.json")
-
-    # Load JSON
-    conf = json.load(open(config_path))
-    token = conf["telegramToken"]
-    broker = conf["brokerIP1"]
-    port = conf["brokerPort"]
-    topic = conf["mqttTopic"]
-    sb = HealthmonitorBot(token, broker, port, topic)
+    broker = BROKER_MQTT_URL
+    port = int(BROKER_MQTT_PORT)
+    token = TELEGRAMBOT_TOKEN
+    sb = HealthmonitorBot(token, broker, port)
 
     while True:
         time.sleep(3)
