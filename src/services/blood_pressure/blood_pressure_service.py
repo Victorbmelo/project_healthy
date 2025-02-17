@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import time
 import requests
 
 import sys
@@ -61,7 +62,8 @@ class BloodPressureService:
         mqtt.subscribe(self.MQTT_TOPIC)
         print(f"[BloodPressureService] Blood Pressure Service started and subscribed to {self.MQTT_TOPIC}")
         try:
-            mqtt._client.loop_forever()
+            while True:
+                time.sleep(1)
         except KeyboardInterrupt:
             mqtt.close()
             print("[BloodPressureService] Blood Pressure Service stopped.")

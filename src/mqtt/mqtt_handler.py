@@ -5,7 +5,7 @@ BROKER_PORT = 1883
 
 
 class MqttHandler:
-    def __init__(self, client_id, broker=BROKER_URL, port=BROKER_PORT, keepalive=60, username=None, password=None, tls=None):
+    def __init__(self, client_id=None, broker=BROKER_URL, port=BROKER_PORT, keepalive=60, username=None, password=None, tls=None):
         """
         Initialize the MQTT Handler.
 
