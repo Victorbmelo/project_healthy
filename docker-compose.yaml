@@ -58,7 +58,7 @@ services:
     ports:
       - "8082:8082"
     environment:
-      - THINGSPEAK_ADAPTER_URL=thingspeak_adapter
+      - THINGSPEAK_ADAPTER_URL=http://thingspeak_adapter:8081
       - ML_PORT=8082
     depends_on:
       - thingspeak_adapter
@@ -113,7 +113,7 @@ services:
       dockerfile: src/services/telegram_bot/Dockerfile
     environment:
       - DB_CONNECTOR_URL=http://db_connector:8080
-      - THINGSPEAK_ADAPTER_URL=thingspeak_adapter
+      - THINGSPEAK_ADAPTER_URL=http://thingspeak_adapter:8081
       - BROKER_MQTT_URL=mqtt_broker
       - BROKER_MQTT_PORT=1883
     depends_on:
